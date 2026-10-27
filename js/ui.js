@@ -261,7 +261,7 @@ function viewTasks() {
       ${list.length ? `<div class="grid g2">${list.slice(0, 30).map(jobCard).join('')}</div>${list.length > 30 ? `<p class="muted small">${list.length - 30} more not shown. Use Assign everything.</p>` : ''}` : '<div class="card empty">Nothing here.</div>'}`;
   }).join('');
   return `<div class="pagehead"><div><h2>Tasks</h2><p>${S.jobs.length} open.</p></div><span class="spacer"></span>${S.jobs.length ? `<button class="btn primary" data-act="assignAll">Assign everything</button>` : ''}</div>
-    <div class="alert info">Each team member can do ${STAFF_CAP} jobs a day. Unresolved complaints make guests angrier every night. Requests not handled by the end of the day are lost. Managers can do any job. Assign everything gives each job to the best person available, with no discounts on complaints.</div>${worksPanel()}${body}`;
+    ${capacityCard()}<div class="alert info">Each team member can do ${STAFF_CAP} jobs a day. Unresolved complaints make guests angrier every night. Requests not handled by the end of the day are lost. Managers can do any job. Assign everything gives each job to the best person available, with no discounts on complaints.</div>${worksPanel()}${body}`;
 }
 
 function viewMaintenance() {

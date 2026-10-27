@@ -5,7 +5,7 @@ const vm = require('vm'), fs = require('fs'), path = require('path');
 const root = path.join(__dirname, '..', 'js');
 const sb = { console: { log() {}, error() {} }, Math, JSON, Date, Number, Object, Array, String, Set, Map, Error };
 vm.createContext(sb);
-for (const f of ['storage.js', 'data.js', 'names-data.js', 'names.js', 'scenarios.js', 'scenarios-guests.js', 'scenarios-business.js', 'scenarios-extra.js', 'scenarios-fun.js', 'engine.js', 'engine-extra.js', 'engine-contractors.js', 'engine-bookings.js', 'engine-events.js', 'engine-mail.js', 'engine-season.js', 'engine-challenges.js', 'engine-coach.js', 'engine-bank.js', 'engine-milestones.js', 'engine-fun.js', 'engine-phone.js', 'engine-guestbook.js', 'engine-career.js', 'engine-wishes.js', 'engine-mgmt.js', 'engine-team.js', 'engine-dashboard.js']) vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), sb);
+for (const f of ['storage.js', 'data.js', 'names-data.js', 'names.js', 'scenarios.js', 'scenarios-guests.js', 'scenarios-business.js', 'scenarios-extra.js', 'scenarios-fun.js', 'engine.js', 'engine-extra.js', 'engine-contractors.js', 'engine-bookings.js', 'engine-events.js', 'engine-mail.js', 'engine-season.js', 'engine-challenges.js', 'engine-coach.js', 'engine-bank.js', 'engine-milestones.js', 'engine-fun.js', 'engine-phone.js', 'engine-guestbook.js', 'engine-career.js', 'engine-wishes.js', 'engine-mgmt.js', 'engine-staffing.js', 'engine-team.js', 'engine-dashboard.js']) vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), sb);
 const run = c => vm.runInContext(c, sb);
 const GAMES = Number(process.argv[2]) || 60, DAYS = Number(process.argv[3]) || 120;
 

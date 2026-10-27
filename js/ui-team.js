@@ -67,12 +67,13 @@ function tabRota() {
 }
 
 function tabHire() {
-  return `<div class="card"><h3>Advertise for a specific role (${money(ADVERT_COST)})</h3>
+  return `${hireGuide()}<div class="card"><h3>Advertise for a specific role (${money(ADVERT_COST)})</h3>
     <div class="row" style="margin-top:12px">${availableRoles().map(r => `<button class="btn sm ghost" data-act="advert" data-role="${esc(r)}">${esc(r)}</button>`).join('')}</div></div>
     <div class="section-title"><h3>Applicants</h3><span class="chip">${S.candidates.length}</span><span class="chip">Team ${S.staff.length} of ${staffLimit()}</span><span class="muted small">New applicants arrive every morning.</span></div>
     ${S.candidates.length ? `<div class="grid g3">${S.candidates.map(c => `<div class="card stack">
       <div class="row">${avatar(c, 'lg')}<div><b>${esc(c.name)}</b><div>${esc(c.role)}</div><div class="muted small">${esc(c.trait)}</div></div></div>
       <div class="row small"><span>Skill</span><span class="stars">${stars(c.skill)}</span><span class="muted" style="margin-left:10px">Reliability</span><span class="stars">${stars(c.reliability)}</span></div>
+      ${candidateAdvice(c)}
       <div class="row"><b>${money(c.wage)}</b><span class="muted small">per day, ${esc(SHIFTS[ROLE_SHIFT[c.role] || 'day'].name.toLowerCase())} shift</span><button class="btn sm good right" data-act="hire" data-id="${c.id}">Hire</button></div></div>`).join('')}</div>` : '<div class="card empty">No applicants right now.</div>'}`;
 }
 

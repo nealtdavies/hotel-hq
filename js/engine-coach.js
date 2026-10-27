@@ -70,6 +70,8 @@ function coachTip() {
   const empty = S.rooms.length ? 1 - (S.guests.length / S.rooms.length) : 0;
   if (S.money < 1500) return { text: 'Cash is low. Fill more rooms, and try a cheap event to bring money in.', view: 'events' };
   if (complaints) return { text: 'Deal with complaints today. Unhappy guests leave bad reviews and your rating drops.', view: 'inbox' };
+  const stretched = stretchedRoles()[0];
+  if (stretched) return { text: `${stretched.role} work is piling up: ${stretched.jobs} jobs and room for ${stretched.free}. Recruit another ${stretched.role}, and check their skill, reliability and wage first.`, view: 'staff' };
   if (arrivals > ready) return { text: 'More guests are arriving than there are clean rooms. Send housekeeping to the dirty ones.', view: 'inbox' };
   if (S.enquiries.length && !S.autoBook) return { text: 'People are waiting to book. Accept them so empty rooms start earning.', view: 'guests' };
   if (dirty >= 3) return { text: `${dirty} rooms need cleaning. A clean room is ready to sell.`, view: 'inbox' };

@@ -45,6 +45,9 @@ Tabs: **On shift**, **People**, **14-day rota** and **Recruitment**.
 - **Mood:** working normal days is neutral; a flat-out day, six or more days in a row, and being sick lower it; days off raise it; extremes drift back to the middle. Under 40 raises the daily chance of calling in sick, and under 35 someone tells you in the Inbox.
 - Jobs you hand out are placed on the person's timeline (cleaning 45 min, repairs 90, complaints 30, requests 25, servicing 60, incidents 60).
 
+- **Too few staff.** Each person does three jobs a day, so when more jobs are waiting for a kind of work than the people on duty can still do (a Manager can cover any job), the Tasks page shows a "team is stretched" card with a button to advertise for that role, the morning briefing and the daily tip say so, and the Recruitment page explains how to choose.
+- **Choosing who to hire.** Skill is experience: each star above three adds £8 to the daily wage and each below takes £8 off. What skill buys depends on the job (`SKILL_FOR` in `js/engine-staffing.js`, which matches the rules: complaints +3 happiness a star for a Receptionist, guest requests +2 a star, events from the team's average; it does not speed up cleaning, repairs or seating). Reliability costs nothing extra and sets the chance of a sick day (about 3 in 100 for five stars, 15 for one). Each applicant shows their wage against the usual wage.
+
 ### Bookings
 
 Tabs: **Reservations**, **Dinner**, **Events**, **Room blocks** and **Calendar**. Reservations can be made up to 60 days ahead for any date, with live availability and price as you type: guests, dates, room type or a specific room, a custom rate, meals, extras, deposit, party type and other guests' names, and notes.
@@ -259,6 +262,7 @@ After editing run `node tests/simulate.js`. It checks every scenario's structure
 | `js/engine-guestbook.js` | Guest notes, the guest book and returning guests, review replies and the diary (no DOM access) |
 | `js/engine-career.js` | Career ranks and certificates, and the morning briefing (no DOM access) |
 | `js/engine-mgmt.js` | Management online and offline, the held-back morning, and the real-clock catch-up (no DOM access) |
+| `js/engine-staffing.js`, `js/ui-staffing.js` | Spotting a stretched team, the advice to recruit, and the guide to choosing who to hire (the engine file has no DOM access) |
 | `js/engine-wishes.js` | What guests asked for (sea view, ground floor, vegetarian food, a dish) and the complaints when it is not delivered (no DOM access) |
 | `js/engine-coach.js` | First steps, awards, the day headline and tips (no DOM access) |
 | `js/engine-team.js` | Shifts, the in-day clock, activity, mood, rota editing, hiring (no DOM access) |

@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 
 const root = path.join(__dirname, '..', 'js');
-const files = ['storage.js', 'data.js', 'names-data.js', 'names.js', 'scenarios.js', 'scenarios-guests.js', 'scenarios-business.js', 'scenarios-extra.js', 'scenarios-fun.js', 'engine.js', 'engine-extra.js', 'engine-contractors.js', 'engine-bookings.js', 'engine-events.js', 'engine-mail.js', 'engine-season.js', 'engine-challenges.js', 'engine-coach.js', 'engine-bank.js', 'engine-milestones.js', 'engine-fun.js', 'engine-phone.js', 'engine-guestbook.js', 'engine-career.js', 'engine-wishes.js', 'engine-mgmt.js', 'engine-team.js', 'engine-dashboard.js'];
+const files = ['storage.js', 'data.js', 'names-data.js', 'names.js', 'scenarios.js', 'scenarios-guests.js', 'scenarios-business.js', 'scenarios-extra.js', 'scenarios-fun.js', 'engine.js', 'engine-extra.js', 'engine-contractors.js', 'engine-bookings.js', 'engine-events.js', 'engine-mail.js', 'engine-season.js', 'engine-challenges.js', 'engine-coach.js', 'engine-bank.js', 'engine-milestones.js', 'engine-fun.js', 'engine-phone.js', 'engine-guestbook.js', 'engine-career.js', 'engine-wishes.js', 'engine-mgmt.js', 'engine-staffing.js', 'engine-team.js', 'engine-dashboard.js'];
 const errors = [];
 const sandbox = { console: { log: console.log, error: (...a) => errors.push(a.map(String).join(' ')) }, Math, JSON, Date, Number, Object, Array, String, Set, Map, Error };
 vm.createContext(sandbox);
@@ -2002,6 +2002,50 @@ const T = code => JP(run(`JSON.stringify((function(){ ${code} })())`));
   const bad = Object.entries(r).filter(([k, v]) => v !== true).map(([k, v]) => `${k} is ${JSON.stringify(v)}`);
   bad.forEach(b => fail('management online: ' + b));
   if (!bad.length) ok('management online: real dates, the day ends and the morning waits, going online (same day, next day, away up to three days), left online past midnight, offline is frozen, running out of money, old saves');
+}
+
+/* ---------- staffing advice: a stretched team, and choosing who to hire ---------- */
+{
+  const r = JP(run(`(function () { const o = {};
+    newGame('T', 'T'); S.money = 100000; S.staff = S.staff.filter(x => x.role !== 'Manager'); S.staff.forEach(x => { x.rota = Array(14).fill(true); x.used = 0; x.sickDays = 0; });
+    const cleanJob = () => ({ id: nid(), type: 'clean', roomId: S.rooms[0].id, role: 'Housekeeper', text: 'x' });
+    const setJobs = n => { S.jobs = Array.from({ length: n }, cleanJob); };
+    // what skill is worth, in the rules as they are
+    o.advice = /barely matters/.test(skillAdvice('Housekeeper')) && /3 points happier/.test(skillAdvice('Receptionist')) && skillAdvice('Kids Club Leader') === SKILL_GENERAL && skillAdvice('Nonsense') === SKILL_GENERAL;
+    o.wage = wageDiff('Housekeeper', wageFor('Housekeeper', 3)) === 0 && wageDiff('Housekeeper', wageFor('Housekeeper', 5)) === 2 * WAGE_PER_STAR && wageDiff('Housekeeper', wageFor('Housekeeper', 1)) === -2 * WAGE_PER_STAR && WAGE_PER_STAR === 8;
+    o.rulesMatch = (() => { const g = guestById(S.guests[0].id); const h = g.happiness; const rec = S.staff.find(x => x.role === 'Receptionist'); rec.skill = 5; S.jobs = [{ id: nid(), type: 'complaint', guestId: g.id, role: 'Receptionist', text: 'x', discount: false }]; g.happiness = 40; const a = doAssign(S.jobs[0].id, rec.id, true); const gain5 = g.happiness - 40; rec.skill = 1; rec.used = 0; g.happiness = 40; S.jobs = [{ id: nid(), type: 'complaint', guestId: g.id, role: 'Receptionist', text: 'x', discount: false }]; doAssign(S.jobs[0].id, rec.id, true); const gain1 = g.happiness - 40; return a && gain5 - gain1 === 4 * 3; })();
+    S.staff.forEach(x => { x.used = 0; });
+    // enough people: no advice
+    setJobs(5); o.fine = stretchedRoles().length === 0 && workload()[0].short === 0;
+    // too many jobs: the team on duty cannot do them all
+    const hk = S.staff.filter(x => x.role === 'Housekeeper').length; setJobs(30);
+    const w = workload().find(x => x.role === 'Housekeeper');
+    o.stretched = w.jobs === 30 && w.headcount === hk && w.onDuty === hk && w.free === hk * STAFF_CAP && w.short === 30 - hk * STAFF_CAP && w.covered === 0 && w.remaining === w.short && stretchedRoles()[0].role === 'Housekeeper';
+    // a Manager on duty covers some of the gap
+    S.staff.push(makeStaff('Boss', 'm', 'm03', 'Manager', 3, 3, [])); S.staff.forEach(x => { x.rota = Array(14).fill(true); });
+    const w2 = workload().find(x => x.role === 'Housekeeper'); o.manager = w2.covered === STAFF_CAP && w2.remaining === w2.short - STAFF_CAP;
+    // used-up people, people off sick and people off today do not count
+    S.staff.filter(x => x.role === 'Housekeeper').forEach(x => { x.used = STAFF_CAP; }); o.usedUp = workload().find(x => x.role === 'Housekeeper').free === 0;
+    S.staff.forEach(x => { x.used = 0; }); S.staff.filter(x => x.role === 'Housekeeper')[0].sickDays = 2; o.sick = workload().find(x => x.role === 'Housekeeper').onDuty === hk - 1;
+    S.staff.filter(x => x.role === 'Housekeeper')[1].rota = Array(14).fill(false); o.offToday = workload().find(x => x.role === 'Housekeeper').onDuty === hk - 2;
+    S.staff.forEach(x => { x.rota = Array(14).fill(true); x.sickDays = 0; });
+    // the words
+    const row = stretchedRoles()[0], text = recruitText(row);
+    o.words = /Housekeeper: 30 jobs/.test(text) && /Recruit another Housekeeper/.test(text) && !/undefined|NaN/.test(text) && !/team is full/.test(text);
+    const lim = staffLimit(); while (S.staff.length < lim) S.staff.push(makeStaff('Extra ' + S.staff.length, 'f', 'f01', 'Maintenance', 3, 3, [])); S.staff.forEach(x => { x.rota = Array(14).fill(true); });
+    o.fullTeam = /team is full for this level/.test(recruitText(stretchedRoles()[0] || row));
+    S.staff = S.staff.filter(x => !/^Extra /.test(x.name)); S.staff.forEach(x => { x.rota = Array(14).fill(true); });
+    // the coach and the morning briefing say so
+    S.money = 100000; S.jobs = Array.from({ length: 30 }, cleanJob); S.guests.forEach(g => { g.happiness = 80; });
+    const tip = coachTip(); o.tip = /Recruit another Housekeeper/.test(tip.text) && tip.view === 'staff';
+    const b = briefing().today.find(x => /Recruit another Housekeeper/.test(x.text)); o.briefing = !!b && b.kind === 'warn';
+    // other kinds of work are judged on their own
+    S.jobs = [{ id: nid(), type: 'repair', target: 'asset', assetKey: S.assets[0].key, role: 'Maintenance', text: 'x' }]; o.repairFine = stretchedRoles().length === 0;
+    S.jobs = [];  o.none = workload().length === 0 && stretchedRoles().length === 0;
+    return o; })()`));
+  const bad = Object.entries(r).filter(([k, v]) => v !== true).map(([k, v]) => `${k} is ${JSON.stringify(v)}`);
+  bad.forEach(b => fail('staffing advice: ' + b));
+  if (!bad.length) ok('staffing advice: what skill is worth matches the rules, wages by star, a stretched team found (managers cover, used-up, sick and off-duty people do not count), the words, a full team, the coach tip and the briefing');
 }
 
 /* ---------- guest faces ---------- */

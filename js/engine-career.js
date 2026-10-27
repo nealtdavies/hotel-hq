@@ -40,6 +40,7 @@ function briefing() {
     today.push({ kind: 'info', text: `${plural(due.length, 'reservation')} arriving today.${back.length ? ` Returning: ${back.join(', ')}.` : ''}` });
   }
   for (const b of due.slice(0, 3)) { const gaps = bookingWishGaps(b); if (gaps.length) today.push({ kind: 'warn', text: `${b.name} asked for ${gaps.map(x => x.label).join(' and ')}. Move them to ${gaps.map(x => x.hint).join(' and ')} before they arrive.` }); }
+  for (const r of stretchedRoles().slice(0, 2)) today.push({ kind: 'warn', text: recruitText(r) });
   const open = phoneOpen().length, queued = S.phone.calls.filter(c => c.status === 'queued').length;
   if (open + queued) today.push({ kind: 'info', text: `${open + queued} ${open + queued === 1 ? 'call or message is' : 'calls or messages are'} expected at the phone desk.` });
   const ev = S.events.filter(e => e.day === S.day);

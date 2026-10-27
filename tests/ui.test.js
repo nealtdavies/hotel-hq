@@ -937,6 +937,30 @@ const assert = (c, m) => { if (!c) { failed++; console.error('FAIL:', m); } else
     assert(await page.locator('.chip.scorer img[alt="Trip Scorer"]').count() === 1 && await page.evaluate(() => { const i = document.querySelector('.chip.scorer img'); return i.complete && i.naturalWidth > 0 && i.getBoundingClientRect().height <= 34; }), 'the Trip Scorer logo shows, small, beside the review average');
     await page.evaluate(() => { if (!S.mgmt.online) actions.goOnline(); ui.modal = null; render(); });
 
+    // ---- a stretched team: advice to recruit, and how to choose ----
+    await page.evaluate(() => {
+      ui.modal = null; S.staff.forEach(x => { x.rota = Array(14).fill(true); x.used = 0; x.sickDays = 0; });
+      S.jobs = Array.from({ length: 30 }, () => ({ id: nid(), type: 'clean', roomId: S.rooms[0].id, role: 'Housekeeper', text: 'x' }));
+      actions.nav({ view: 'tasks' });
+    });
+    assert(await page.locator('.card:has-text("Your team is stretched") .alert.warn:has-text("Recruit another Housekeeper")').count() === 1, 'the Tasks page says when the team cannot do all the jobs, and to recruit');
+    const cashAd = await page.evaluate(() => S.money);
+    await page.click('[data-act="recruitNow"][data-role="Housekeeper"]');
+    assert(await page.evaluate(() => S.candidates.length === 3 && S.candidates.every(c => c.role === 'Housekeeper') && ui.view === 'staff' && ui.staffTab === 'hire'), 'one tap advertises for that role and shows the applicants');
+    assert(await page.evaluate(c => S.money === c - ADVERT_COST, cashAd), 'and the advert costs what it says');
+    const guide = await page.locator('.content').innerText();
+    assert(guide.includes('Choosing who to hire') && guide.includes('Skill is experience') && guide.includes('Reliability is about sick days') && /Housekeeper:.*barely matters/s.test(guide), 'the Recruitment page explains skill, reliability and wages for the role');
+    assert(await page.locator('.card.stack:has-text("per day") >> text=/a day is .* the usual wage/').count() === 3, 'every applicant shows their wage against the usual wage');
+    assert(await page.locator('.content >> text=/Off sick about \\d+ days in 100/').count() === 3, 'and how often they are off sick');
+    await page.evaluate(() => { ui.view = 'dashboard'; render(); });
+    assert(await page.locator('li.brief.warn:has-text("Recruit another Housekeeper")').count() === 1, 'the morning briefing says it too');
+    for (const [w, h] of [[390, 844], [820, 1180]]) {
+      await page.setViewportSize({ width: w, height: h });
+      for (const v of ['tasks', 'staff']) { await page.evaluate(vw => { ui.view = vw; ui.staffTab = 'hire'; render(); window.scrollTo(0, 0); }, v); assert(!(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)), `no sideways scroll on ${v} at ${w} wide`); }
+    }
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.evaluate(() => { S.jobs = []; S.candidates = []; render(); });
+
     // ---- the children's menu ----
     await page.evaluate(() => { ui.modal = null; S.unlocked.push('restaurant'); ui.view = 'events'; ui.eventTab = 'menu'; render(); });
     assert(await page.locator('.card:has-text("Children\'s menu")').count() === 1 && await page.locator('[data-act="addKidsMenu"]:has-text("(10)")').count() === 1, 'the menu offers the children\'s dishes');
