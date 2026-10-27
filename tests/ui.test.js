@@ -774,8 +774,9 @@ const assert = (c, m) => { if (!c) { failed++; console.error('FAIL:', m); } else
     await page.evaluate(() => { S.day -= 1; });
 
     // an email: quiet, kept in the Inbox, easier than a call
-    await page.evaluate(() => { ui.modal = null; S.phone.calls = []; S.phone.lastRing = 1; S.phone.lastMail = 0; S.phone.answerphone = false; const e = makeCall('email'); e.ask = { type: 'Standard', arriveDay: S.day + 2, nights: 2, adults: 2, children: 0, asks: ['quiet'] }; S.phone.calls.push(e); phoneBeat(); actions.nav({ view: 'phone' }); });
+    await page.evaluate(() => { ui.modal = null; S.phone.calls = []; S.phone.lastRing = 1; S.phone.lastMail = 0; S.phone.answerphone = false; const e = makeCall('email'); e.ask = { type: 'Standard', arriveDay: S.day + 2, nights: 2, adults: 2, children: 0, asks: ['quiet'] }; S.phone.calls.push(e); window.__tones = []; sound.last = 0; phoneBeat(); actions.nav({ view: 'phone' }); });
     assert(await page.locator('#ringFab').count() === 0 && await page.evaluate(() => S.phone.calls[0].status === 'waiting' && !phoneRinging()), 'an email arrives quietly: nothing rings');
+    assert(await page.evaluate(() => __tones.join()) === '523', 'and it gives one low, soft ding and nothing else');
     assert(await page.locator('.card:has-text("Email, today") [data-act="callOpen"]:has-text("Read and book")').count() === 1 && await page.locator('.card.kpi:has-text("Emails waiting") .v:text-is("1")').count() === 1, 'the Phone tab lists it as an email');
     await page.evaluate(() => { actions.nav({ view: 'inbox' }); });
     assert(await page.locator('.mailrow:has-text("Booking enquiry:")').count() === 1 && await page.locator('.mailrow.unread:has-text("Booking enquiry:")').count() === 1, 'it also waits in the Inbox, titled as a booking enquiry');
@@ -795,7 +796,8 @@ const assert = (c, m) => { if (!c) { failed++; console.error('FAIL:', m); } else
     assert(await page.locator('.card:has-text("Answerphone"):has-text("Off")').count() >= 1, 'the Phone tab shows the answerphone, off to begin with');
     await page.click('[data-act="toggleAnswerphone"]');
     assert(await page.evaluate(() => S.phone.answerphone === true) && (await page.locator('.content').innerText()).includes('Callers leave a voicemail'), 'it can be turned on');
-    await queueCall(); await page.evaluate(() => phoneBeat());
+    await queueCall(); await page.evaluate(() => { __tones.length = 0; sound.last = 0; phoneBeat(); });
+    assert(await page.evaluate(() => __tones.join()) === '523', 'a voicemail gives the same single soft ding, with no ring');
     assert(await page.locator('#ringFab').count() === 0 && await page.evaluate(() => { const c = S.phone.calls[0]; return !phoneRinging() && c.kind === 'voicemail' && c.via === 'answerphone' && c.status === 'waiting'; }), 'with it on the call does not ring and is left as a voicemail');
     await page.evaluate(() => { actions.nav({ view: 'inbox' }); });
     assert(await page.locator('.mailrow:has-text("Voicemail:"):has-text("booking enquiry")').count() === 1, 'the voicemail is in the Inbox, titled Voicemail with a booking enquiry');

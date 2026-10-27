@@ -37,7 +37,7 @@ function phoneBeat() {
   if (!S || !S.phone) return;
   const before = phoneSignature();
   const c = phoneTick(Date.now(), phoneBlocked());
-  if (c) { if (c.status === 'ringing') ringPhone(); else sfx('mail'); }   // a call rings; emails, messages and voicemails arrive quietly
+  if (c) { if (c.status === 'ringing') ringPhone(); else sfx('ding'); }   // a call rings; emails, messages and voicemails only give a soft low ding
   if (phoneSignature() === before) return;   // nothing changed, so nothing to redraw
   writeSave();
   const typing = document.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName);

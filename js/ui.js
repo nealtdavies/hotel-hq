@@ -1,7 +1,7 @@
 'use strict';
 
 /* ================= UI state & helpers ================= */
-const ui = { roomFilter: 'all', view: 'dashboard', staffTab: 'shift', bookingTab: 'rooms', eventTab: 'plan', mailTab: 'inbox', mailSel: null, mailDiscount: false, lastUnread: null, bkFilter: 'all', calType: null, modal: null, photo: null, autoInc: false, pendingImport: null };
+const ui = { roomFilter: 'all', view: 'dashboard', staffTab: 'shift', bookingTab: 'rooms', eventTab: 'plan', mailTab: 'inbox', mailSel: null, mailDiscount: false, lastUnreadKeys: null, bkFilter: 'all', calType: null, modal: null, photo: null, autoInc: false, pendingImport: null };
 const missingImgs = new Set();   // image files that failed to load (so we show the placeholder straight away)
 
 const ICONS = {
@@ -495,9 +495,9 @@ function render() {
   if (S && ui.modal && ui.modal.type === 'incident' && !S.incidents.some(i => i.id === ui.modal.id)) ui.modal = null;
   if (S && !ui.modal && S.tierSeen < S.tier) ui.modal = { type: 'levelup' };
   if (!S) { app.innerHTML = modalHtml(); focusFirst(); return; }
-  const unreadNow = unreadMail().length;
-  if (ui.lastUnread !== null && unreadNow > ui.lastUnread) sfx('mail');
-  ui.lastUnread = unreadNow;
+  const unreadKeys = new Set(unreadMail().map(m => m.key));
+  if (ui.lastUnreadKeys && [...unreadKeys].some(k => !ui.lastUnreadKeys.has(k) && !k.startsWith('call:'))) sfx('mail');   // voicemails and emails have their own soft ding
+  ui.lastUnreadKeys = unreadKeys;
   app.innerHTML = `<div class="app">
     <nav class="side" aria-label="Main">${navHtml()}</nav>
     <div class="main">

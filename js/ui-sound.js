@@ -9,8 +9,10 @@ const SOUND_KEY = 'hotelhq.sound';
 const TONES = {                       // [frequency in Hz, seconds] played one after another
   tick: [[880, 0.06]], good: [[660, 0.07], [990, 0.11]], bad: [[247, 0.16], [196, 0.2]], mail: [[784, 0.08], [1047, 0.13]],
   ring: [[1046, 0.1], [1318, 0.1], [1046, 0.1], [1318, 0.1], [1046, 0.1], [1318, 0.1]], bell: [[2093, 0.05], [2637, 0.32]],
+  ding: [[523, 0.45]],   // a single low, soft note for a voicemail, an email or a message: it never interrupts
   cash: [[1319, 0.06], [1760, 0.16]], award: [[523, 0.1], [659, 0.1], [784, 0.1], [1047, 0.26]], levelup: [[523, 0.12], [659, 0.12], [784, 0.12], [1047, 0.12], [1319, 0.36]]
 };
+const GAIN = { ding: 0.07 };   // how loud each sound is; anything not listed uses the usual 0.16
 const sound = { on: true, ctx: null, last: 0 };
 sound.on = storage.get(SOUND_KEY) !== 'off';   // if storage is blocked the sound stays on
 
@@ -31,7 +33,7 @@ function sfx(name) {
     const osc = ctx.createOscillator(), gain = ctx.createGain();
     osc.type = 'sine'; osc.frequency.value = freq;
     gain.gain.setValueAtTime(0.0001, t);
-    gain.gain.exponentialRampToValueAtTime(0.16, t + 0.012);
+    gain.gain.exponentialRampToValueAtTime(GAIN[name] || 0.16, t + (name === 'ding' ? 0.03 : 0.012));
     gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     osc.connect(gain); gain.connect(ctx.destination);
     osc.start(t); osc.stop(t + dur + 0.02);
