@@ -728,7 +728,7 @@ const assert = (c, m) => { if (!c) { failed++; console.error('FAIL:', m); } else
 
     // ---- the phone desk ----
     await page.setViewportSize({ width: 1280, height: 900 });
-    const queueCall = () => page.evaluate(() => { ui.modal = null; S.phone.calls = []; S.phone.lastRing = 0; const c = makeCall('call'); c.ask = { type: 'Standard', arriveDay: S.day + 3, nights: 2, adults: 2, children: 0, asks: ['quiet', 'late'] }; S.phone.calls.push(c); render(); return c.id; });
+    const queueCall = () => page.evaluate(() => { ui.modal = null; S.phone.calls = []; S.phone.lastRing = 1; S.phone.lastMail = 0; const c = makeCall('call'); c.ask = { type: 'Standard', arriveDay: S.day + 3, nights: 2, adults: 2, children: 0, asks: ['quiet', 'late'] }; S.phone.calls.push(c); render(); return c.id; });
     await page.evaluate(() => { S.phone.welcome = 'Welcome, friend'; S.blocks = []; render(); });
     const callId = await queueCall();
     await page.evaluate(() => {   // the page was reloaded earlier, so listen for sounds again
@@ -768,13 +768,43 @@ const assert = (c, m) => { if (!c) { failed++; console.error('FAIL:', m); } else
     await page.evaluate(() => { phoneTick(Date.now() + PHONE.ringMs + 5, true); render(); });
     assert(await page.locator('#ringFab').count() === 0 && await page.evaluate(() => phoneOpen().length === 1 && !phoneRinging()), 'an unanswered call stops ringing and waits');
     await page.evaluate(() => { actions.nav({ view: 'phone' }); });
-    assert(await page.locator('.card:has-text("Waiting on the line")').count() === 1 && await page.locator('.card.kpi:has-text("Calls waiting")').count() === 1, 'the Phone tab lists it');
+    assert(await page.locator('.card:has-text("Waiting on the line")').count() === 1 && await page.locator('.card.kpi:has-text("Calls and voicemails waiting")').count() === 1, 'the Phone tab lists it');
     await page.evaluate(() => { S.day += 1; phoneNewDay(); render(); });
     assert(await page.locator('.card:has-text("Left a voicemail yesterday")').count() === 1 && await page.locator('[data-act="callOpen"]:has-text("Call back")').count() === 1, 'by the next morning it is a voicemail she can return');
     await page.evaluate(() => { S.day -= 1; });
 
+    // an email: quiet, kept in the Inbox, easier than a call
+    await page.evaluate(() => { ui.modal = null; S.phone.calls = []; S.phone.lastRing = 1; S.phone.lastMail = 0; S.phone.answerphone = false; const e = makeCall('email'); e.ask = { type: 'Standard', arriveDay: S.day + 2, nights: 2, adults: 2, children: 0, asks: ['quiet'] }; S.phone.calls.push(e); phoneBeat(); actions.nav({ view: 'phone' }); });
+    assert(await page.locator('#ringFab').count() === 0 && await page.evaluate(() => S.phone.calls[0].status === 'waiting' && !phoneRinging()), 'an email arrives quietly: nothing rings');
+    assert(await page.locator('.card:has-text("Email, today") [data-act="callOpen"]:has-text("Read and book")').count() === 1 && await page.locator('.card.kpi:has-text("Emails waiting") .v:text-is("1")').count() === 1, 'the Phone tab lists it as an email');
+    await page.evaluate(() => { actions.nav({ view: 'inbox' }); });
+    assert(await page.locator('.mailrow:has-text("Booking enquiry:")').count() === 1 && await page.locator('.mailrow.unread:has-text("Booking enquiry:")').count() === 1, 'it also waits in the Inbox, titled as a booking enquiry');
+    await page.click('.mailrow:has-text("Booking enquiry:")');
+    assert((await page.locator('.mailpane').innerText()).includes('Dear ') && await page.locator('.mailpane [data-act="callOpen"]:has-text("Read it and make the booking")').count() === 1, 'opening it shows the email and a button to make the booking');
+    await page.click('.mailpane [data-act="callOpen"]'); await page.waitForTimeout(400);
+    assert((await page.locator('.call-head h2').innerText()).startsWith('Email:') && await page.locator('.modal .speech .bubble').count() === 7, 'the booking screen shows the whole email at once');
+    const cashEm = await page.evaluate(() => S.money);
+    await page.fill('#c-n', 'Eve Mail'); await page.selectOption('#c-t', 'Standard'); await page.selectOption('#c-d', String(await page.evaluate(() => S.day + 2)));
+    await page.fill('#c-nn', '2'); await page.fill('#c-a', '2'); await page.fill('#c-k', '0'); await page.check('input[name="ask"][value="quiet"]');
+    await page.click('#callForm button[type=submit]'); await page.waitForTimeout(400);
+    assert((await page.locator('.modal').innerText()).includes('Perfect') && await page.evaluate(b => S.money === b + 15, cashEm) && await page.evaluate(() => S.bookings.some(b => b.name === 'Eve Mail')), 'a perfect email booking is made and pays half a call');
+    await page.evaluate(() => closeModal());
+    assert(await page.locator('.mailrow:has-text("Booking enquiry:")').count() === 0, 'and it leaves the Inbox');
+    // the answerphone: calls never ring, they become voicemails in the Inbox
+    await page.evaluate(() => { actions.nav({ view: 'phone' }); });
+    assert(await page.locator('.card:has-text("Answerphone"):has-text("Off")').count() >= 1, 'the Phone tab shows the answerphone, off to begin with');
+    await page.click('[data-act="toggleAnswerphone"]');
+    assert(await page.evaluate(() => S.phone.answerphone === true) && (await page.locator('.content').innerText()).includes('Callers leave a voicemail'), 'it can be turned on');
+    await queueCall(); await page.evaluate(() => phoneBeat());
+    assert(await page.locator('#ringFab').count() === 0 && await page.evaluate(() => { const c = S.phone.calls[0]; return !phoneRinging() && c.kind === 'voicemail' && c.via === 'answerphone' && c.status === 'waiting'; }), 'with it on the call does not ring and is left as a voicemail');
+    await page.evaluate(() => { actions.nav({ view: 'inbox' }); });
+    assert(await page.locator('.mailrow:has-text("Voicemail:"):has-text("booking enquiry")').count() === 1, 'the voicemail is in the Inbox, titled Voicemail with a booking enquiry');
+    await page.click('.mailrow:has-text("Voicemail:")');
+    assert(await page.locator('.mailpane [data-act="callOpen"]:has-text("Listen and make the booking")').count() === 1, 'and can be listened to from there');
+    await page.evaluate(() => { S.phone.answerphone = false; S.phone.calls = []; ui.mailSel = null; render(); });
+
     // a written message
-    await page.evaluate(() => { S.phone.calls = []; S.phone.lastRing = 0; const m = makeMessage(); S.phone.calls.push(m); window.__tones.length = 0; sound.last = 0; phoneBeat(); ui.view = 'phone'; render(); });
+    await page.evaluate(() => { S.phone.calls = []; S.phone.lastRing = 1; S.phone.lastMail = 0; const m = makeMessage(); S.phone.calls.push(m); window.__tones.length = 0; sound.last = 0; phoneBeat(); ui.view = 'phone'; render(); });
     assert(await page.locator('.card:has-text("Message,")').count() === 1 && await page.locator('#ringFab').count() === 0, 'a message arrives quietly, with no ringing');
     await page.click('[data-act="msgOpen"]'); await page.waitForTimeout(400);
     await page.fill('#m-t', 'Dear guest, we would love to see you!');
@@ -950,7 +980,7 @@ const assert = (c, m) => { if (!c) { failed++; console.error('FAIL:', m); } else
     assert(await page.evaluate(c => S.money === c - ADVERT_COST, cashAd), 'and the advert costs what it says');
     const guide = await page.locator('.content').innerText();
     assert(guide.includes('Choosing who to hire') && guide.includes('Skill is experience') && guide.includes('Reliability is about sick days') && /Housekeeper:.*barely matters/s.test(guide), 'the Recruitment page explains skill, reliability and wages for the role');
-    assert(await page.locator('.card.stack:has-text("per day") >> text=/a day is .* the usual wage/').count() === 3, 'every applicant shows their wage against the usual wage');
+    assert(await page.locator('.card.stack:has-text("per day") >> text=/a day is .*the usual wage/').count() === 3, 'every applicant shows their wage against the usual wage');
     assert(await page.locator('.content >> text=/Off sick about \\d+ days in 100/').count() === 3, 'and how often they are off sick');
     await page.evaluate(() => { ui.view = 'dashboard'; render(); });
     assert(await page.locator('li.brief.warn:has-text("Recruit another Housekeeper")').count() === 1, 'the morning briefing says it too');

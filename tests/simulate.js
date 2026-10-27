@@ -134,7 +134,7 @@ run(`
     if (S.kids && !(S.kids.price >= KIDS.min && S.kids.price <= KIDS.max && typeof S.kids.auto === 'boolean')) p.push('kids club invalid');
     if (S.shop) for (const [k, l] of Object.entries(SHOP_LINES)) { const n = S.shop.stock[k], pr = S.shop.price[k]; if (!(Number.isInteger(n) && n >= 0 && n <= SHOP_MAX_STOCK) || !(pr >= l.ref * 0.5 && pr <= l.ref * 2)) p.push('shop invalid ' + k + ' ' + n + ' ' + pr); }
     if (S.trips) { const cats = tripCategories(); const ids = new Set(S.trips.list.map(t => t.id)); if (ids.size !== S.trips.list.length || S.trips.list.length > TRIP.maxTrips || S.trips.list.some(t => !cats[t.cat] || !(t.price >= TRIP.priceMin && t.price <= TRIP.priceMax) || t.name.length < 2 || /[<>]/.test(t.name) || t.id >= S.trips.nextId)) p.push('trips invalid'); }
-    { const ph = S.phone, ids = new Set(ph.calls.map(c => c.id)); if (!ph || ids.size !== ph.calls.length || ph.calls.length > 40 || ph.calls.some(c => !['call', 'voicemail', 'message'].includes(c.kind) || !['queued', 'ringing', 'waiting', 'done'].includes(c.status) || !c.caller.name || c.id >= ph.nextId || (c.kind !== 'message' && !(CALL_ROOM_PHRASE[c.ask.type] && c.ask.nights >= 1 && c.ask.adults >= 1))) || ph.calls.filter(c => c.status === 'ringing').length > 1 || ph.sent.length > 30 || ph.welcome.length > PHONE.welcomeMax || /[<>]/.test(ph.welcome)) p.push('phone invalid'); }
+    { const ph = S.phone, ids = new Set(ph.calls.map(c => c.id)); if (!ph || ids.size !== ph.calls.length || ph.calls.length > 40 || ph.calls.some(c => !['call', 'voicemail', 'message', 'email'].includes(c.kind) || !['queued', 'ringing', 'waiting', 'done'].includes(c.status) || !c.caller.name || c.id >= ph.nextId || (c.kind !== 'message' && !(CALL_ROOM_PHRASE[c.ask.type] && c.ask.nights >= 1 && c.ask.adults >= 1))) || ph.calls.filter(c => c.status === 'ringing').length > 1 || typeof ph.answerphone !== 'boolean' || ph.sent.length > 30 || ph.welcome.length > PHONE.welcomeMax || /[<>]/.test(ph.welcome)) p.push('phone invalid'); }
     return p;
   };
 `);
@@ -1725,7 +1725,7 @@ const T = code => JP(run(`JSON.stringify((function(){ ${code} })())`));
 {
   const r = JP(run(`(function () { const o = {};
     newGame('P', 'P'); const p0 = S.phone;
-    o.fresh = p0.calls.filter(c => c.kind === 'call' && c.status === 'queued').length >= 2 && p0.calls.every(c => c.status === 'queued') && p0.answered === 0 && p0.welcome === '' && /^[\\p{L}' -]+$/u.test(p0.calls[0].caller.first);
+    o.fresh = p0.calls.filter(c => c.kind === 'call' && c.status === 'queued').length >= 1 && p0.calls.filter(c => c.kind === 'email').length >= 1 && p0.answerphone === false && p0.calls.every(c => c.status === 'queued') && p0.answered === 0 && p0.welcome === '' && /^[\\p{L}' -]+$/u.test(p0.calls[0].caller.first);
     const mk = () => { S.phone.calls = []; const c = makeCall('call'); c.ask = { type: 'Standard', arriveDay: S.day + 3, nights: 2, adults: 2, children: 0, asks: ['quiet', 'late'] }; c.status = 'waiting'; S.phone.calls.push(c); return c; };
     // the script
     let c = mk(); const lines = callScript(c);
@@ -1736,13 +1736,32 @@ const T = code => JP(run(`JSON.stringify((function(){ ${code} })())`));
     let cotOK = true, asksOK = true; for (let i = 0; i < 300; i++) { const x = makeCall('call'); if (x.ask.asks.includes('cot') && x.ask.children === 0) cotOK = false; if (x.ask.asks.length > PHONE.maxAsks || new Set(x.ask.asks).size !== x.ask.asks.length || x.ask.arriveDay < S.day || x.ask.arriveDay > S.day + PHONE.arriveSpread || x.ask.nights < 1 || x.ask.nights > 5) asksOK = false; }
     o.generated = cotOK && asksOK;
     // ringing
-    S.phone.calls = [makeCall('call'), makeCall('call'), makeMessage()]; S.phone.lastRing = 0;
-    o.blocked = phoneTick(1000, true) === null && S.phone.calls.every(x => x.status === 'queued');
-    const first = phoneTick(1000, false); o.rings = first === S.phone.calls[0] && first.status === 'ringing' && phoneRinging() === first && phoneOpen().length === 1;
-    o.oneAtATime = phoneTick(2000, false) === null && S.phone.calls[1].status === 'queued';
-    o.timesOut = phoneTick(1000 + PHONE.ringMs + 1, false) === null && first.status === 'waiting' && !phoneRinging();
-    o.gap = phoneTick(1000 + PHONE.gapMs - 1, false) === null && phoneTick(1000 + PHONE.gapMs + 1, false) === S.phone.calls[1];
-    S.phone.calls[1].status = 'waiting'; const msg = phoneTick(1000 + PHONE.gapMs * 2 + 5, false); o.messageQuiet = msg === S.phone.calls[2] && msg.status === 'waiting' && msg.kind === 'message';
+    S.phone.calls = [makeCall('call'), makeCall('call'), makeMessage(), makeCall('email')]; S.phone.lastRing = 0; S.phone.lastMail = 0; S.phone.answerphone = false;
+    const tStart = 1000, tRing = tStart + PHONE.firstMs;
+    o.blocked = phoneTick(tStart, true) === null && S.phone.calls.every(x => x.status === 'queued');
+    const quiet1 = phoneTick(tStart, false); o.messageQuiet = quiet1 === S.phone.calls[2] && quiet1.status === 'waiting' && quiet1.kind === 'message' && !phoneRinging();
+    o.firstWaits = phoneTick(tRing - 1, false) === null && S.phone.calls[0].status === 'queued';
+    const first = phoneTick(tRing, false); o.rings = first === S.phone.calls[0] && first.status === 'ringing' && phoneRinging() === first && phoneOpen().length === 2;
+    o.oneAtATime = phoneTick(tRing + 1000, false) === null && S.phone.calls[1].status === 'queued';
+    const afterRing = phoneTick(tRing + PHONE.ringMs + 1, false); o.timesOut = first.status === 'waiting' && !phoneRinging();
+    o.emailQuiet = afterRing === S.phone.calls[3] && afterRing.kind === 'email' && afterRing.status === 'waiting';
+    o.gap = phoneTick(tRing + PHONE.gapMs - 1, false) === null && phoneTick(tRing + PHONE.gapMs + 1, false) === S.phone.calls[1] && S.phone.calls[1].status === 'ringing';
+    o.gapIsLong = PHONE.gapMs >= 120000 && PHONE.firstMs < PHONE.gapMs && PHONE.mailGapMs >= 30000;
+    // the answerphone: nothing rings, every call is left as a voicemail
+    S.phone.calls = [makeCall('call'), makeCall('call')]; S.phone.lastRing = 0; S.phone.lastMail = 0; o.setOn = setAnswerphone(true) === true && S.phone.answerphone === true;
+    const v1 = phoneTick(5000, false); o.vmLeft = v1 === S.phone.calls[0] && v1.kind === 'voicemail' && v1.via === 'answerphone' && v1.status === 'waiting' && !phoneRinging() && phoneTick(5000 + 1000, false) === null;
+    const v2 = phoneTick(5000 + PHONE.mailGapMs, false); o.vmSecond = v2 === S.phone.calls[1] && v2.kind === 'voicemail' && !phoneRinging() && phoneTick(5000 + PHONE.gapMs * 3, false) === null;
+    o.vmScriptA = /leaving a message/.test(callScript(v1)[0]) && !/call back/.test(callScript(v1)[0]) && v1.caller.name.length > 2;
+    o.setOff = setAnswerphone(false) === false && S.phone.answerphone === false;
+    // emails: written, readable, and a half-price booking
+    const em = makeCall('email'); em.status = 'waiting'; em.ask = { type: 'Ocean View', arriveDay: S.day + 2, nights: 3, adults: 2, children: 0, asks: ['view'] }; S.phone.calls = [em];
+    const el = emailLines(em); o.emailText = el.length === 7 && el[0] === 'Dear ' + S.hotel + ',' && /sea view/.test(el[2]) && /3 nights/.test(el[2]) && /two of us/.test(el[3]) && /lovely view/.test(el[4]) && el[el.length - 1] === 'Kind regards, ' + em.caller.name && !/undefined|NaN/.test(el.join(' '));
+    const money0 = S.money, em2 = answerCall(em.id, { name: em.caller.name, type: 'Ocean View', arriveDay: S.day + 2, nights: 3, adults: 2, children: 0, asks: ['view'] });
+    o.emailAnswered = em2.ok && em2.stars === 3 && em2.reward === 15 && em.status === 'done' && S.bookings.some(b => b.name === em.caller.name) && S.money === money0 + 15;
+    // how many each day
+    const perDay = []; for (const tier of [1, 2, 3, 4]) { let ok = true; for (let i = 0; i < 120; i++) { S.tier = tier; S.phone.calls = []; phoneNewDay(); const calls = S.phone.calls.filter(x => x.kind === 'call').length, emails = S.phone.calls.filter(x => x.kind === 'email').length; if (calls < 1 || calls > 2 + Math.floor((tier - 1) / 2) || emails < 1 || emails > 2 + (tier >= 3 ? 1 : 0)) ok = false; } perDay.push(ok); } S.tier = 1;
+    o.fewCalls = perDay.every(Boolean);
+    S.phone.answered = 0; S.phone.perfect = 0; S.tally.calls = 0; S.bookings = []; S.phone.calls = [];   // the checks below start from a clean desk
     // scoring
     c = mk(); const good = { type: 'Standard', arriveDay: S.day + 3, nights: 2, adults: 2, children: 0, asks: ['quiet', 'late'] };
     const sc = (x) => scoreCall(c, Object.assign({}, good, x));
@@ -1778,9 +1797,17 @@ const T = code => JP(run(`JSON.stringify((function(){ ${code} })())`));
     newGame('P', 'P'); S.phone.calls = []; const a = makeCall('call'), b = makeCall('call'), m = makeMessage(), mq = makeMessage(); a.status = 'waiting'; b.status = 'queued'; m.status = 'waiting'; mq.status = 'waiting'; mq.day = S.day - 5; S.phone.calls.push(a, b, m, mq);
     S.day++; phoneNewDay();
     o.voicemail = a.kind === 'voicemail' && a.status === 'waiting' && S.phone.calls.includes(a) && !S.phone.calls.includes(b) && S.phone.calls.includes(m) && !S.phone.calls.includes(mq);
-    o.queuedNew = S.phone.calls.filter(x => x.status === 'queued' && x.kind === 'call').length >= 2 && S.phone.lastRing === 0;
+    o.queuedNew = S.phone.calls.filter(x => x.status === 'queued' && x.kind === 'call').length >= 1 && S.phone.lastRing === 0;
     S.day += PHONE.keepDays + 1; phoneNewDay(); o.voicemailExpires = !S.phone.calls.includes(a) && !S.phone.calls.includes(m);
     o.vmScript = /call back/.test((a.status = 'waiting', callScript(a)[0]));
+    // voicemails and emails wait in the inbox
+    newGame('P', 'P'); S.phone.calls = []; const vm1 = makeCall('call'), em3 = makeCall('email'); vm1.kind = 'voicemail'; vm1.via = 'answerphone'; vm1.status = 'waiting'; em3.status = 'waiting'; S.phone.calls.push(vm1, em3);
+    const box = inboxItems(), iv = box.find(x => x.key === 'call:' + vm1.id), ie = box.find(x => x.key === 'call:' + em3.id);
+    o.inboxVm = !!iv && iv.subject === 'Voicemail: ' + vm1.caller.name + ' - booking enquiry' && iv.kind === 'voicemail' && iv.from === vm1.caller.name && iv.unread === true && iv.actions[0].type === 'call' && iv.actions[0].id === vm1.id && iv.live === true;
+    o.inboxEmail = !!ie && ie.subject === 'Booking enquiry: ' + em3.caller.name && ie.kind === 'email' && /^Dear /.test(ie.body) && ie.role === 'Email';
+    const unread0 = unreadMail().length; markMailRead('call:' + em3.id); o.inboxRead = unreadMail().length === unread0 - 1;
+    em3.status = 'done'; o.inboxGone = !inboxItems().some(x => x.key === 'call:' + em3.id) && inboxItems().some(x => x.key === 'call:' + vm1.id);
+    em3.status = 'waiting'; em3.day = S.day - 5; S.day += 1; phoneNewDay(); o.emailExpires = !S.phone.calls.includes(em3);
     // welcome message and saves
     o.welcome = setWelcomeMessage('  Welcome <b>to</b> our hotel!  ') === 'Welcome to our hotel!' && S.phone.welcome === 'Welcome to our hotel!';
     o.welcomeCap = setWelcomeMessage('x'.repeat(500)).length === PHONE.welcomeMax && !/[<>]/.test(setWelcomeMessage('<<>>hi'));

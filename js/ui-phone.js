@@ -37,7 +37,7 @@ function phoneBeat() {
   if (!S || !S.phone) return;
   const before = phoneSignature();
   const c = phoneTick(Date.now(), phoneBlocked());
-  if (c) { if (c.kind === 'message') sfx('mail'); else ringPhone(); }
+  if (c) { if (c.status === 'ringing') ringPhone(); else sfx('mail'); }   // a call rings; emails, messages and voicemails arrive quietly
   if (phoneSignature() === before) return;   // nothing changed, so nothing to redraw
   writeSave();
   const typing = document.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName);
@@ -47,19 +47,23 @@ setInterval(phoneBeat, 4000);
 
 /* ---------- The Phone tab ---------- */
 function callCard(c) {
+  if (c.kind === 'email') return `<div class="card stack"><div class="row">${callerFace(c, 'lg')}<div style="flex:1;min-width:0"><b>${esc(c.caller.name)}</b><div class="muted small">Email, ${callAgo(c)}</div></div><span class="chip info">Email</span></div>
+    <div class="row"><button class="btn primary" data-act="callOpen" data-id="${c.id}">Read and book</button></div></div>`;
   if (c.kind === 'message') return `<div class="card stack"><div class="row">${callerFace(c, 'lg')}<div style="flex:1;min-width:0"><b>${esc(c.caller.name)}</b><div class="muted small">Message, ${callAgo(c)}</div></div><span class="chip info">Message</span></div>
     <div class="bubble">${esc(c.text)}</div><div class="row"><button class="btn primary" data-act="msgOpen" data-id="${c.id}">Write a reply</button></div></div>`;
   const ringing = c.status === 'ringing', vm = c.kind === 'voicemail';
-  return `<div class="card stack ${ringing ? 'ringing' : ''}"><div class="row">${callerFace(c, 'lg')}<div style="flex:1;min-width:0"><b>${esc(c.caller.name)}</b><div class="muted small">${ringing ? 'Ringing now' : vm ? `Left a voicemail ${callAgo(c)}` : 'Waiting on the line'}</div></div>
+  return `<div class="card stack ${ringing ? 'ringing' : ''}"><div class="row">${callerFace(c, 'lg')}<div style="flex:1;min-width:0"><b>${esc(c.caller.name)}</b><div class="muted small">${ringing ? 'Ringing now' : vm ? `${c.via === 'answerphone' ? 'Left a message on the answerphone' : 'Missed call, left a voicemail'} ${callAgo(c)}` : 'Waiting on the line'}</div></div>
     <span class="chip ${ringing ? 'bad' : vm ? 'warn' : 'good'}">${ringing ? 'Ringing' : vm ? 'Voicemail' : 'Waiting'}</span></div>
     <div class="row"><button class="btn primary" data-act="callOpen" data-id="${c.id}">${vm ? 'Call back' : 'Answer'}</button></div></div>`;
 }
 function viewPhone() {
   const open = phoneOpen(), p = S.phone, today = S.tally.calls || 0, queued = p.calls.filter(c => c.status === 'queued').length;
-  const calls = open.filter(c => c.kind !== 'message'), msgs = open.filter(c => c.kind === 'message');
+  const calls = open.filter(c => c.kind === 'call' || c.kind === 'voicemail'), emails = open.filter(c => c.kind === 'email'), msgs = open.filter(c => c.kind === 'message');
   const sent = p.sent.slice(0, 5).map(m => `<div class="row small" style="padding:6px 0;border-bottom:1px solid var(--line)"><span class="muted" style="min-width:64px">Day ${m.day + 1}</span><span style="flex:1;min-width:0"><b>${esc(m.to)}</b>: ${esc(m.text)}</span></div>`).join('');
-  return `<div class="pagehead"><div><h2>Phone desk</h2><p>Guests ring and write while you play. Listen, fill in the booking, and write a friendly reply. Calls you miss are kept as voicemails for a couple of days.</p></div></div>
-    <div class="grid g4">${[[calls.length, 'Calls waiting'], [msgs.length, 'Messages to answer'], [today, 'Calls answered today'], [p.perfect, 'Perfect bookings so far']].map(([v, l]) => `<div class="card kpi"><div class="v">${v}</div><div class="l">${l}</div></div>`).join('')}</div>
+  return `<div class="pagehead"><div><h2>Phone desk</h2><p>Guests ring, email and write while you play. Emails are the easy ones: read them as often as you like. Calls you miss, and calls while the answerphone is on, are kept as voicemails in your Inbox for a couple of days.</p></div></div>
+    <div class="card"><div class="row"><div style="flex:1;min-width:200px"><h3>Answerphone</h3><div class="muted small">${p.answerphone ? 'On. The phone never rings. Callers leave a voicemail, which waits in your Inbox as "Voicemail" with their booking enquiry.' : 'Off. The phone rings now and then while you play. Turn it on if you would rather answer later.'}</div></div>
+      <span class="chip ${p.answerphone ? 'good' : ''}">${p.answerphone ? 'On' : 'Off'}</span><button class="btn ${p.answerphone ? 'ghost' : 'primary'}" data-act="toggleAnswerphone">${p.answerphone ? 'Turn off' : 'Turn on'}</button></div></div>
+    <div class="grid g4" style="margin-top:14px">${[[calls.length, 'Calls and voicemails waiting'], [emails.length, 'Emails waiting'], [msgs.length, 'Messages to answer'], [today, 'Bookings taken today']].map(([v, l]) => `<div class="card kpi"><div class="v">${v}</div><div class="l">${l}</div></div>`).join('')}</div>
     ${open.length ? `<div class="grid g2" style="margin-top:14px">${open.map(callCard).join('')}</div>` : `<div class="card empty" style="margin-top:14px">Nothing waiting. ${queued ? 'The phone will ring soon, so keep playing.' : 'No more calls today. New ones arrive in the morning.'}</div>`}
     <div class="section-title"><h3>Your welcome message</h3></div>
     <div class="card"><form data-form="welcomeMsg"><label class="f" for="w-m">Printed on every booking confirmation</label>
@@ -74,9 +78,9 @@ const callTypes = () => [...new Set(S.rooms.map(r => r.type))];
 MODALS.call = m => {
   const c = callById(m.id);
   if (!c || c.kind === 'message') return null;
-  const lines = callScript(c), days = Array.from({ length: 14 }, (_, i) => S.day + i);
-  return { inner: `<div class="call-head">${callerFace(c, 'lg')}<div><h2 style="margin:0">${c.kind === 'voicemail' ? 'Voicemail' : 'Phone call'}: ${esc(c.caller.name)}</h2><div class="muted small">Listen, then fill in the booking.</div></div></div>
-    <div class="call-body"><div class="speech">${lines.map((l, i) => `<div class="bubble" style="animation-delay:${i * 0.45}s">${esc(l)}</div>`).join('')}</div>
+  const email = c.kind === 'email', lines = email ? emailLines(c) : callScript(c), days = Array.from({ length: 14 }, (_, i) => S.day + i);
+  return { inner: `<div class="call-head">${callerFace(c, 'lg')}<div><h2 style="margin:0">${email ? 'Email' : c.kind === 'voicemail' ? 'Voicemail' : 'Phone call'}: ${esc(c.caller.name)}</h2><div class="muted small">${email ? 'Read it, then fill in the booking.' : 'Listen, then fill in the booking.'}</div></div></div>
+    <div class="call-body"><div class="speech">${lines.map((l, i) => `<div class="bubble" style="animation-delay:${email ? 0 : i * 0.45}s">${esc(l)}</div>`).join('')}</div>
     <form data-form="call" id="callForm" class="stack">
       <label class="f" for="c-n">Guest name</label>
       <div class="row" style="flex-wrap:nowrap"><input type="text" id="c-n" name="name" maxlength="30" placeholder="Write the name down" required data-autofocus style="flex:1;min-width:0"><button type="button" class="btn sm ghost" data-act="fillName" data-id="${c.id}">Fill it in for me</button></div>
@@ -91,6 +95,7 @@ MODALS.call = m => {
       <input type="text" id="c-note" name="note" maxlength="${PHONE.noteMax}" placeholder="Anything you want to remember about this guest">
       <div class="actions"><button class="btn ghost" type="button" data-act="phoneDecline" data-id="${c.id}">Say sorry, no room</button><button class="btn primary" type="submit">Book it</button></div></form></div>` };
 };
+actions.toggleAnswerphone = () => { const on = setAnswerphone(!S.phone.answerphone); toast(on ? 'Answerphone on. Calls will go to voicemail in your Inbox.' : 'Answerphone off. The phone will ring again.', 'good'); commit(); };
 actions.openPhone = () => { const c = phoneRinging(); if (c) openModal({ type: 'call', id: c.id }); else { ui.view = 'phone'; render(); window.scrollTo(0, 0); } };
 actions.callOpen = d => openModal({ type: 'call', id: Number(d.id) });
 actions.fillName = d => { const c = callById(Number(d.id)), el = document.getElementById('c-n'); if (c && el) { el.value = c.caller.name; el.focus(); } };

@@ -6,7 +6,7 @@
 
 const MAIL_TABS = [['inbox', 'Inbox'], ['urgent', 'Urgent'], ['handled', 'Handled']];
 const mailTime = m => m.day === S.day ? (m.live ? 'Today' : clockText(m.clock)) : `Day ${m.day + 1}`;
-const mailAvatar = (m, size) => { const s = m.staffId ? staffById(m.staffId) : null; return s ? avatar(s, size) : `<div class="av-fb ${size || ''}">${esc(initials(m.from))}</div>`; };
+const mailAvatar = (m, size) => { const s = m.staffId ? staffById(m.staffId) : null; const c = m.callId ? callById(m.callId) : null; if (c) return callerFace(c, size); return s ? avatar(s, size) : `<div class="av-fb ${size || ''}">${esc(initials(m.from))}</div>`; };
 
 function mailRow(m, selected) {
   return `<button type="button" class="mailrow ${m.unread ? 'unread' : ''} ${m.urgent ? 'urgent' : ''} ${selected ? 'selected' : ''}" data-act="mailOpen" data-key="${esc(m.key)}">
@@ -27,6 +27,7 @@ function mailActionHtml(m) {
         ${free.length ? `<div class="staffchips">${chips}</div><div style="margin-top:10px"><button class="btn sm" data-act="mailBest" data-job="${j.id}" data-discount="${ui.mailDiscount ? 1 : 0}">Best available</button></div>` : `<div class="alert warn">Everyone who can do this is off, sick or has done ${STAFF_CAP} jobs today.</div>`}</div>`;
     }
     if (a.type === 'assignAll') return `<button class="btn primary" data-act="mailAssignAll" data-role="${esc(a.role)}" data-jobtype="${esc(a.jobType)}">Send ${a.role === 'Housekeeper' ? 'housekeeping' : 'the team'}</button>`;
+    if (a.type === 'call') { const c = callById(a.id); return c ? `<button class="btn primary" data-act="callOpen" data-id="${c.id}">${c.kind === 'email' ? 'Read it and make the booking' : 'Listen and make the booking'}</button>` : ''; }
     if (a.type === 'incident') return `<button class="btn primary" data-act="resolve" data-id="${a.id}">Make a decision</button>`;
     if (a.type === 'quotes') return `<button class="btn ghost" data-act="getQuotes" data-kind="${a.kindOf}" data-target="${a.target}" data-key="${esc(a.key)}">Get contractor quotes</button>`;
     if (a.type === 'service') return `<button class="btn primary" data-act="service" data-key="${esc(a.key)}">Service it in-house</button>`;

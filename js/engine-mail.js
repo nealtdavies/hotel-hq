@@ -73,6 +73,12 @@ function liveMail() {
   for (const a of S.assets) if (!a.broken && a.cond < 40) add(`wear:${a.key}`, 'equipment', 'Maintenance', false, `${ASSET_DEFS[a.key].name} is at ${a.cond}%`, `Below 50% the risk of a breakdown rises quickly. Service it before it fails.`, [{ type: 'service', key: a.key }, { type: 'quotes', kindOf: 'service', target: 'asset', key: a.key }]);
   if (S.money < 0) add('cash', 'cash', 'Accounts', true, 'You are overdrawn', `The balance is ${money(S.money)}. Earn more or cut costs. At ${money(BANKRUPT_AT)} the bank closes you down.`, [{ type: 'nav', view: 'finance' }]);
   for (const s of S.staff) if (s.mood < 35) add(`tired:${s.id}`, 'staff', 'Manager', s.mood < 20, `${s.name} is ${s.mood < 20 ? 'exhausted' : 'stressed'}`, `${s.name} (${s.role}) has worked ${s.streak} day${s.streak === 1 ? '' : 's'} in a row and is ${moodWordStaff(s.mood).toLowerCase()}. Unhappy staff call in sick more often.`, [{ type: 'dayOff', staffId: s.id }, { type: 'nav', view: 'staff' }]);
+  for (const c of S.phone ? S.phone.calls : []) {   // voicemails and emails wait in the inbox until the booking is made
+    if (c.status !== 'waiting' || !['voicemail', 'email'].includes(c.kind)) continue;
+    const key = `call:${c.id}`;
+    items.push({ key, live: true, kind: c.kind, urgent: false, from: c.caller.name, role: c.kind === 'email' ? 'Email' : 'Voicemail', staffId: null, callId: c.id, subject: phoneSubject(c),
+      body: (c.kind === 'email' ? emailLines(c) : callScript(c)).join(' '), actions: [{ type: 'call', id: c.id }], day: c.day, clock: DAY_START, unread: !read[key] });
+  }
   items.sort((a, b) => (b.urgent - a.urgent) || a.key.localeCompare(b.key));
   return items;
 }

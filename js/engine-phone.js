@@ -5,7 +5,7 @@
    of it they caught. Writing is never marked: the name and note are kept as typed. What is unanswered becomes a voicemail for a couple
    of days, with no penalty. */
 
-const PHONE = { ringMs: 30000, gapMs: 45000, keepDays: 2, noteMax: 120, replyMax: 200, welcomeMax: 120, maxAsks: 2, arriveSpread: 11 };
+const PHONE = { ringMs: 30000, gapMs: 150000, firstMs: 20000, mailGapMs: 40000, keepDays: 2, noteMax: 120, replyMax: 200, welcomeMax: 120, maxAsks: 2, arriveSpread: 11 };
 const CALL_ROOM_PHRASE = { 'Standard': 'a standard room', 'Ocean View': 'a room with a sea view', 'Family': 'a family room', 'Luxury Suite': 'your best suite' };
 /* What a caller may ask for. `label` is the booking request it becomes, `say` is what they say, `needsKids` keeps a baby cot for families. */
 const CALL_ASKS = [
@@ -31,7 +31,7 @@ const MESSAGE_TEMPLATES = [
   'Good evening. Do you have anything for children to do in the afternoons?'
 ];
 
-const newPhoneState = () => ({ calls: [], lastRing: 0, nextId: 1, answered: 0, perfect: 0, sent: [], welcome: '' });
+const newPhoneState = () => ({ calls: [], lastRing: 0, lastMail: 0, answerphone: false, nextId: 1, answered: 0, perfect: 0, sent: [], welcome: '' });
 const callById = id => S.phone.calls.find(c => c.id === id);
 const phoneOpen = () => S.phone.calls.filter(c => c.status === 'ringing' || c.status === 'waiting');
 const phoneRinging = () => S.phone.calls.find(c => c.status === 'ringing') || null;
@@ -70,13 +70,25 @@ function makeMessage() {
 function callScript(c) {
   const a = c.ask, party = a.children ? `${countWord(a.adults)} adult${a.adults > 1 ? 's' : ''} and ${countWord(a.children)} ${a.children > 1 ? 'children' : 'child'}` : a.adults === 1 ? 'just me' : `${countWord(a.adults)} of us`;
   const lines = [];
-  lines.push(c.kind === 'voicemail' ? `Hello, it is ${c.caller.name}. I rang earlier about a room, and I would love a call back.` : c.regular ? `Hello! It is ${c.caller.name} again. We stayed with you before and we loved it.` : CALL_GREETINGS[c.v % CALL_GREETINGS.length].replace('{hotel}', S.hotel).replace('{name}', c.caller.name));
+  lines.push(c.kind === 'voicemail' ? (c.via === 'answerphone' ? `Hello, this is ${c.caller.name}. I could not get through, so I am leaving a message about a booking.` : `Hello, it is ${c.caller.name}. I rang earlier about a room, and I would love a call back.`) : c.regular ? `Hello! It is ${c.caller.name} again. We stayed with you before and we loved it.` : CALL_GREETINGS[c.v % CALL_GREETINGS.length].replace('{hotel}', S.hotel).replace('{name}', c.caller.name));
   lines.push(`I would like ${CALL_ROOM_PHRASE[a.type] || 'a room'} for ${a.nights} night${a.nights > 1 ? 's' : ''}, arriving ${callDayLabel(a.arriveDay)}.`);
   lines.push(`There will be ${party}.`);
   for (const k of a.asks) lines.push(CALL_ASKS.find(x => x.key === k).say);
   lines.push(CALL_CLOSINGS[c.v % CALL_CLOSINGS.length]);
   return lines;
 }
+
+/* The same request written as an email: the whole thing can be read again and again, so it is easier than a call. */
+function emailLines(c) {
+  const a = c.ask, party = a.children ? `${countWord(a.adults)} adult${a.adults > 1 ? 's' : ''} and ${countWord(a.children)} ${a.children > 1 ? 'children' : 'child'}` : a.adults === 1 ? 'just me' : `${countWord(a.adults)} of us`;
+  const lines = [`Dear ${S.hotel},`, c.regular ? `We stayed with you before and we loved it, so we would like to book again.` : `I would like to make a booking, please.`,
+    `I would like ${CALL_ROOM_PHRASE[a.type] || 'a room'} for ${a.nights} night${a.nights > 1 ? 's' : ''}, arriving ${callDayLabel(a.arriveDay)}.`, `There will be ${party}.`];
+  for (const k of a.asks) lines.push(CALL_ASKS.find(x => x.key === k).say);
+  lines.push('Please let me know if that is possible.', `Kind regards, ${c.caller.name}`);
+  return lines;
+}
+/* What a waiting item is called in the Inbox. */
+const phoneSubject = c => c.kind === 'voicemail' ? `Voicemail: ${c.caller.name} - booking enquiry` : c.kind === 'email' ? `Booking enquiry: ${c.caller.name}` : `Message from ${c.caller.name}`;
 
 /* ---------- The daily cycle ---------- */
 /* Called each morning from generateDay: yesterday's unanswered calls become voicemails, old ones are dropped, and today's are queued. */
@@ -85,28 +97,42 @@ function phoneNewDay() {
   for (const c of p.calls) {
     if (c.status === 'queued') c.status = 'gone';
     else if ((c.status === 'ringing' || c.status === 'waiting') && c.kind === 'call') { c.kind = 'voicemail'; c.status = 'waiting'; c.day = S.day - 1; }
-    if ((c.kind === 'voicemail' || c.kind === 'message') && c.status === 'waiting' && S.day - c.day > PHONE.keepDays) c.status = 'gone';
+    if (['voicemail', 'message', 'email'].includes(c.kind) && c.status === 'waiting' && S.day - c.day > PHONE.keepDays) c.status = 'gone';
   }
   p.calls = p.calls.filter(c => c.status === 'waiting' || c.status === 'ringing');
   p.sent = p.sent.slice(0, 30);
-  const calls = 2 + rnd(2) + S.tier - 1, messages = chance(0.6) ? 1 + (S.tier >= 3 ? 1 : 0) : 0;
+  const calls = 1 + rnd(2) + Math.floor((S.tier - 1) / 2), emails = 1 + rnd(2) + (S.tier >= 3 ? 1 : 0), messages = chance(0.6) ? 1 + (S.tier >= 3 ? 1 : 0) : 0;   // calls are the interruption, so there are few; most bookings come by email
   for (let i = 0; i < calls; i++) p.calls.push(makeCall('call'));
+  for (let i = 0; i < emails; i++) p.calls.push(makeCall('email'));
   for (let i = 0; i < messages; i++) p.calls.push(makeMessage());
-  p.lastRing = 0;
+  p.lastRing = 0; p.lastMail = 0;
 }
 /* Called every few seconds while the game is open. `now` is a time in milliseconds; `blocked` is true when something else has the player's attention
-   (a pop-up, the guided tour, a hidden tab). A ringing call that nobody answers stops ringing and waits. Returns the call that has just started ringing. */
+   (a pop-up, the guided tour, a hidden tab, Management offline). Emails and messages arrive quietly, one every PHONE.mailGapMs. A call rings on its own
+   schedule, one at a time, with PHONE.gapMs between calls; with the answerphone on it never rings and is left as a voicemail instead. A ringing call that
+   nobody answers stops ringing and waits. Returns what has just arrived (a ringing call, or a quiet item), or null. */
 function phoneTick(now, blocked) {
   const p = S.phone, ringing = phoneRinging();
   if (ringing && now - ringing.ringAt > PHONE.ringMs) ringing.status = 'waiting';
-  if (blocked || phoneRinging()) return null;
-  if (p.lastRing && now - p.lastRing < PHONE.gapMs) return null;
-  const next = p.calls.find(c => c.status === 'queued');
-  if (!next) return null;
+  if (blocked) return null;
+  let arrived = null;
+  const quiet = c => c.status === 'queued' && (c.kind === 'email' || c.kind === 'message' || (p.answerphone && c.kind === 'call'));
+  if (!p.lastMail || now - p.lastMail >= PHONE.mailGapMs) {
+    const item = p.calls.find(quiet);
+    if (item) {
+      if (item.kind === 'call') { item.kind = 'voicemail'; item.via = 'answerphone'; item.day = S.day; }
+      item.status = 'waiting'; p.lastMail = now; arrived = item;
+    }
+  }
+  if (phoneRinging() || p.answerphone) return arrived;
+  if (!p.lastRing) p.lastRing = now - (PHONE.gapMs - PHONE.firstMs);   // the first call of the day comes a little after the player has started
+  if (now - p.lastRing < PHONE.gapMs) return arrived;
+  const next = p.calls.find(c => c.status === 'queued' && c.kind === 'call');
+  if (!next) return arrived;
   next.status = 'ringing'; next.ringAt = now; p.lastRing = now;
-  if (next.kind === 'message') next.status = 'waiting';   // a message arrives quietly with a ping, not a ring
   return next;
 }
+function setAnswerphone(on) { S.phone.answerphone = !!on; return S.phone.answerphone; }
 
 /* ---------- Answering ---------- */
 /* How much of the call the player caught: the room, the day, the nights, the people and each request, with a request that was not made
@@ -148,7 +174,7 @@ function answerCall(id, a) {
     giveWishes(made.guest, [...new Set(asks.map(k => wishFromText(CALL_ASKS.find(x => x.key === k).label)).filter(Boolean))]);
     judgeRoomWishes(made.guest, roomById(made.guest.roomId));
   }
-  const reward = Math.round(score.stars * 10 * (c.kind === 'voicemail' ? 0.5 : 1));
+  const reward = Math.round(score.stars * 10 * (c.kind === 'voicemail' || c.kind === 'email' ? 0.5 : 1));   // an email can be read again and a voicemail played again, so they pay half
   bonus(reward, `Phone desk: ${name}`);
   c.status = 'done'; c.result = { stars: score.stars, right: score.right, total: score.total, reward };
   S.phone.answered++; if (score.stars === 3) S.phone.perfect++;
