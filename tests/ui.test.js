@@ -1100,11 +1100,15 @@ const assert = (c, m) => { if (!c) { failed++; console.error('FAIL:', m); } else
     await goLive(page);
     // artwork behind the games, served by the test: scenes, a set of pictures that follow the marker, and transparent patches
     const tinyPng = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
-    const gamesDir = path.join(__dirname, '..', 'assets', 'games'), madeDir = !fs.existsSync(gamesDir), tmpArt = [];
+    const gamesDir = path.join(__dirname, '..', 'assets', 'games'), keepDir = gamesDir + '.kept-by-test', tmpArt = [];
+    const hadReal = fs.existsSync(gamesDir);
+    if (hadReal) fs.renameSync(gamesDir, keepDir);   // real artwork is set aside for the whole run and put back on exit, so the stand-ins can never touch it
+    const madeDir = true;
     const putArt = f => { fs.mkdirSync(gamesDir, { recursive: true }); fs.writeFileSync(path.join(gamesDir, f), tinyPng); tmpArt.push(f); };
     const dropArt = f => { try { fs.unlinkSync(path.join(gamesDir, f)); } catch (e) { /* already gone */ } };
     const cleanArt = () => { tmpArt.forEach(dropArt); if (madeDir) { try { fs.rmdirSync(gamesDir); } catch (e) { /* not empty or gone */ } } };
-    process.on('exit', cleanArt);   // the stand-in pictures never stay behind, even if a check fails
+    const restoreReal = () => { cleanArt(); if (hadReal && fs.existsSync(keepDir)) { try { fs.rmSync(gamesDir, { recursive: true, force: true }); } catch (e) { /* nothing to clear */ } fs.renameSync(keepDir, gamesDir); } };
+    process.on('exit', restoreReal);   // the stand-in pictures never stay behind and the real artwork always comes back, even if a check fails
     ['pipe-valve-bg.jpg', 'pipe-valve-f1.png', 'pipe-valve-f2.png', 'pipe-valve-f3.png', 'pipe-valve-f4.png', 'pipe-valve-f5.png', 'pipe-dry-bg.jpg', 'patch-wet.png', 'pipe-plumber-bg.jpg'].forEach(putArt);
     await page.evaluate(() => { ui.modal = null; S.crises = []; S.crisisLast = -99; S.warning = null; S.rooms.forEach(r => { r.damaged = false; }); S.staff.forEach(x => { x.used = 0; x.trait = 'Always on time'; }); startCrisis('pipe', false); S.crises[0].seen = true; actions.nav({ view: 'crisis' }); });
     await page.click('.crisis-card .pick[data-key="valve"] >> nth=0'); await page.waitForTimeout(400);
