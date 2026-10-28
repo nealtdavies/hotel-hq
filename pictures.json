@@ -1,8 +1,9 @@
 {
- "count": 334,
- "bytes": 23672471,
+ "count": 335,
+ "bytes": 23778351,
  "files": [
   "assets/games/patch-wet.png",
+  "assets/games/pipe-dry-bg.jpg",
   "assets/games/pipe-plumber-bg.jpg",
   "assets/games/pipe-valve-bg.jpg",
   "assets/games/pipe-valve-f1.png",
