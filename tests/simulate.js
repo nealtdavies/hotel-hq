@@ -2105,7 +2105,7 @@ const T = code => JP(run(`JSON.stringify((function(){ ${code} })())`));
     o.inspOther = (S.standards.next = S.day + 3, runInspection([])) === null;
     // ---- crises ----
     S.rooms.forEach(x => { x.dirty = false; x.damaged = false; }); S.guests = []; S.rooms.forEach(x => { x.guestId = null; }); S.jobs = []; S.crises = []; S.crisisLast = -99; S.news = [];
-    o.defs = Object.keys(CRISES).length === 5 && Object.values(CRISES).every(d => d.name && d.actions.length === 4 && d.fine > 0 && d.reward > 0 && d.growth > 0 && d.actions.every(a => a.key && a.label && a.hint && a.ok && (a.odds === null || a.odds === undefined || a.bad)) && !/\\b(he|she|his|her)\\b/i.test(JSON.stringify(d.actions.map(a => [a.label, a.hint, a.ok, a.bad]))));
+    o.defs = Object.keys(CRISES).length === 8 && Object.values(CRISES).every(d => d.name && d.actions.length === 4 && d.fine > 0 && d.reward > 0 && d.growth > 0 && d.actions.every(a => a.key && a.label && a.hint && a.ok && (a.odds === null || a.odds === undefined || a.bad)) && !/\\b(he|she|his|her)\\b/i.test(JSON.stringify(d.actions.map(a => [a.label, a.hint, a.ok, a.bad]))));
     const pc = startCrisis('pipe', false);
     o.pipeStart = S.crises.length === 1 && pc.trouble === CRISIS.startTrouble && pc.fix === 0 && pc.roomIds.length === 3 && pc.roomIds.every(id => roomById(id).damaged && roomById(id).damageKind === 'crisis') && S.jobs.filter(j => j.type === 'repair' && j.target === 'room').length >= 3 && S.mail.items[0].urgent === true && /Crisis: Burst pipe/.test(S.mail.items[0].subject) && S.news.some(n => /Burst pipe/.test(n)) && S.crisisLast === S.day && (S.stats.crises || 0) >= 1 && /out of service/.test(CRISES.pipe.intro(pc));
     S.weatherSet = {}; S.weatherSet[S.day] = 'sunny'; S.reviews = [];   // a dry day, and no reviews yet
@@ -2177,7 +2177,7 @@ const T = code => JP(run(`JSON.stringify((function(){ ${code} })())`));
     return o; })()`));
   const bad = Object.entries(r).filter(([k, v]) => v !== true).map(([k, v]) => `${k} is ${JSON.stringify(v)}`);
   bad.forEach(b => fail('crises: ' + b));
-  if (!bad.length) ok('crises and standards: the score and its three parts, inspections (notice, four results, rewards and fines), five crises with rooms, closures and review damage, actions (who, cost, odds by skill, once a day, success and failure), nightly trouble, blowing up, solving, when they begin, escalation, saves, odds on repair');
+  if (!bad.length) ok('crises and standards: the score and its three parts, inspections (notice, four results, rewards and fines), eight crises with rooms, closures and review damage, actions (who, cost, odds by skill, once a day, success and failure), nightly trouble, blowing up, solving, when they begin, escalation, saves, odds on repair');
 }
 
 /* ---------- crisis games, heroes, warnings, safeguards, medals ---------- */
@@ -2266,12 +2266,12 @@ const T = code => JP(run(`JSON.stringify((function(){ ${code} })())`));
     o.noWarnInCrisis = (startCrisis('power', false), always(), rollCrises() === null && S.warning === null); real(); S.crises = [];
     o.noEscalateInWarning = (startWarning('power'), S.crisisLast = -99, always(), escalateIncident({ sid: SCENARIOS.find(s => s.sev === 'Urgent').id }) === null); real(); S.warning = null;
     // ---- safeguards ----
-    o.guardList = Object.keys(SAFEGUARDS).length === 5 && Object.keys(SAFEGUARDS).every(k => CRISES[k] && SAFEGUARDS[k].cost > 0 && SAFEGUARDS[k].text);
+    o.guardList = Object.keys(SAFEGUARDS).length === 8 && Object.keys(SAFEGUARDS).every(k => CRISES[k] && SAFEGUARDS[k].cost > 0 && SAFEGUARDS[k].text);
     const cashS = S.money; const g1 = buySafeguard('pipe');
     o.buyGuard = g1.ok && S.safeguards.pipe === S.day && S.money === cashS - SAFEGUARDS.pipe.cost && hasGuard('pipe') && !hasGuard('power') && S.mail.items[0].subject === 'New safeguard: Plumbing check-up';
     o.guardErrors = buySafeguard('pipe').ok === false && /already/.test(buySafeguard('pipe').error) && buySafeguard('nonsense').ok === false && (S.money = BANKRUPT_AT + 10, buySafeguard('power').ok === false) && (S.money = 100000, true) && !hasGuard('power');
     const gp = startCrisis('pipe', false); o.guardPipe = gp.guarded === true && gp.trouble === 20 && gp.roomIds.length === 2 && /safeguard/.test(S.mail.items[0].body); S.crises = []; S.rooms.forEach(x => { x.damaged = false; });
-    buySafeguard('power'); buySafeguard('mice'); buySafeguard('gossip');
+    buySafeguard('power'); buySafeguard('mice'); buySafeguard('gossip'); buySafeguard('lift'); buySafeguard('pool'); buySafeguard('lock');
     const gw = startCrisis('power', false), gm = startCrisis('mice', false), gg = startCrisis('gossip', false);
     o.guardPower = gw.closes.length === 0 && gw.trouble === 20 && gw.guarded === true; o.guardMice = gm.closes.length === 0 && gm.reviewHit === 1; o.guardGossip = gg.reviewHit === 0; o.guardOpen = !crisisClosed('restaurant'); S.crises = [];
     o.notYetPrepared = S.medals.prepared === undefined; buySafeguard('roof'); o.prepared = S.medals.prepared !== undefined;
@@ -2280,7 +2280,7 @@ const T = code => JP(run(`JSON.stringify((function(){ ${code} })())`));
     for (let i = 0; i < 6000; i++) { S.crises = []; S.warning = null; S.crisisLast = -99; S.standards.score = 30; const x = rollCrises(); const key = x && (x.key || (S.warning && S.warning.key)); if (key === 'pipe') wcount.guard++; if (key === 'power') wcount.none++; }
     o.guardRarer = wcount.guard > 0 && wcount.none > wcount.guard * 2; S.crises = []; S.warning = null; S.tier = 1; S.safeguards = {};
     // ---- medals and perks ----
-    o.medalList = MEDALS.length === 15 && new Set(MEDALS.map(m => m.key)).size === 15 && MEDALS.every(m => m.name && m.desc) && awardMedal('nonsense') === null;
+    o.medalList = MEDALS.length === 18 && new Set(MEDALS.map(m => m.key)).size === 18 && MEDALS.every(m => m.name && m.desc) && awardMedal('nonsense') === null;
     S.medals = {}; S.medalQueue = []; const bm0 = S.money; const am = awardMedal('coolhead');
     o.medalOnce = am.key === 'coolhead' && S.medals.coolhead === S.day && S.money === bm0 + 100 && S.ledger.some(e => e.grant && e.label === 'Medal: Cool head') && S.medalQueue.join() === 'coolhead' && awardMedal('coolhead') === null && S.money === bm0 + 100 && S.mail.items[0].subject === 'Medal won: Cool head';
     const perks = n => { S.medals = {}; for (let i = 0; i < n; i++) S.medals['m' + i] = 1; return crisisPerks(); };
@@ -2290,8 +2290,8 @@ const T = code => JP(run(`JSON.stringify((function(){ ${code} })())`));
     perks(12); o.perkGrowth = crisisGrowth(CRISES.pipe) === 10 && crisisGrowth({ growth: 5 }) === 4; const pc12 = startCrisis('pipe', false); pc12.skipNight = false; pc12.trouble = 50; runCrises([]); o.perkGrowthApplied = pc12.trouble === 60; S.crises = [];
     perks(9); const pr = startCrisis('pipe', false); pr.fix = 90; const rr2 = resolveCrisis(pr); o.perkReward = rr2.reward === Math.round(CRISES.pipe.reward * (0.6 + 0.4 * S.tier) * 1.2);
     S.medals = {}; S.crisisKinds = {}; S.stats.crisesSolved = 0; S.stats.crisesBlown = 0; S.crises = [];
-    for (const k of ['pipe', 'power', 'mice', 'roof', 'gossip']) { const c = startCrisis(k, false); c.fix = 95; resolveCrisis(c); }
-    o.typeMedals = ['plumber', 'lights', 'pests', 'storm', 'goodname', 'champion', 'coolhead', 'safehands'].every(k => S.medals[k] !== undefined);
+    for (const k of Object.keys(CRISES)) { const c = startCrisis(k, false); c.fix = 95; resolveCrisis(c); }
+    o.typeMedals = ['plumber', 'lights', 'pests', 'storm', 'goodname', 'liftrescue', 'poolpatrol', 'locksmith', 'champion', 'coolhead', 'safehands'].every(k => S.medals[k] !== undefined);
     S.medals = {}; S.stats.crisesSolved = 2; S.stats.crisesBlown = 1; S.crises = []; const cb = startCrisis('pipe', false); cb.fix = 95; resolveCrisis(cb); o.noSafeHands = S.medals.safehands === undefined;
     S.medals = {}; S.crises = []; const cq = startCrisis('power', false); cq.daysOpen = 1; cq.fix = 95; resolveCrisis(cq); const cs = startCrisis('power', false); cs.daysOpen = 2; cs.fix = 95; const q0 = S.medals.quickfix; resolveCrisis(cs); o.quickFix = q0 !== undefined && S.medals.quickfix === q0;
     S.medals = {}; S.stats.excellent = 0; const ev = []; S.standards.next = S.day; S.standards.score = 90; runInspection(ev); o.favouriteOnce = S.medals.favourite === undefined && S.stats.excellent === 1; S.standards.next = S.day; S.standards.score = 90; runInspection(ev); o.favouriteTwice = S.medals.favourite !== undefined;
@@ -2313,6 +2313,50 @@ const T = code => JP(run(`JSON.stringify((function(){ ${code} })())`));
   const bad = Object.entries(r).filter(([k, v]) => v !== true).map(([k, v]) => `${k} is ${JSON.stringify(v)}`);
   bad.forEach(b => fail('crisis games: ' + b));
   if (!bad.length) ok('crisis games: traits, four game types set up by experience, judging, playing instead of the dice, the written notice, heroes and promotion, warnings and preparing (stopped, milder, full), safeguards, medals and perks, what people say, saves');
+}
+{
+  const r = JP(run(`(function () { const o = {};
+    const rand0 = Math.random, always = () => { Math.random = () => 0.001; }, never = () => { Math.random = () => 0.999; }, real = () => { Math.random = rand0; };
+    newGame('G', 'G'); S.money = 100000; S.day = 20; S.guests = []; S.rooms.forEach(x => { x.guestId = null; x.dirty = false; x.damaged = false; }); S.jobs = []; S.crises = []; S.warning = null; S.crisisLast = -99; S.news = [];
+    S.weatherSet = {}; S.weatherSet[S.day] = 'sunny'; S.medals = {}; S.safeguards = {}; S.medalQueue = []; S.heroLog = []; S.crisisKinds = {}; S.stats.crisesSolved = 0; S.stats.crisesBlown = 0;
+    S.staff.forEach(x => { x.rota = Array(14).fill(true); x.used = 0; x.sickDays = 0; x.mood = 60; x.trait = 'Always on time'; });
+    const mt = S.staff.find(x => x.role === 'Maintenance'), rc = S.staff.find(x => x.role === 'Receptionist');
+    // ---- when each can happen ----
+    S.unlocked = S.unlocked.filter(x => x !== 'lift' && x !== 'pool');
+    o.noFacility = !crisisEligible().includes('lift') && !crisisEligible().includes('pool') && crisisEligible().includes('lock');
+    S.unlocked.push('lift', 'pool');
+    o.liftNeedsGuests = !crisisEligible().includes('lift') && (S.guests = [{ id: 1, name: 'A B', roomId: S.rooms[0].id, price: 90, happiness: 80, left: 3, nights: 3, adults: 1, children: 0 }, { id: 2, name: 'C D', roomId: S.rooms[1].id, price: 90, happiness: 80, left: 3, nights: 3, adults: 1, children: 0 }], crisisEligible().includes('lift')) && crisisEligible().includes('pool');
+    // ---- the murky pool closes the pool (the stuck lift upsets guests instead) ----
+    const lf = startCrisis('lift', false), pl = (S.crises = [], startCrisis('pool', false));
+    const poolFac = FACILITIES.find(f => f.key === 'pool');
+    o.closures = lf.closes.length === 0 && pl.closes.join() === 'pool' && (S.crises = [pl], crisisClosed('pool')) && facilityStatus(poolFac).open === false && /closed during a crisis/.test(facilityStatus(poolFac).why);
+    S.crises = [];
+    // ---- the stuck door puts one room out of service, and the lock is opened by the first success ----
+    const lk = startCrisis('lock', false);
+    o.door = lk.roomIds.length === 1 && roomById(lk.roomIds[0]).damaged === true && /jammed/.test(CRISES.lock.intro(lk)) && S.jobs.filter(j => j.type === 'repair' && j.target === 'room').length >= 1;
+    always(); const pk = doCrisisAction(lk.id, 'pick', mt.id, { success: true, perfect: false }); real();
+    o.pickOpens = pk.ok && pk.success && roomById(lk.roomIds[0]).damaged === false && lk.fix === CRISES.lock.actions[0].fix;
+    o.locksmithCost = (S.money = 100000, doCrisisAction(lk.id, 'locksmith', undefined, { success: true }).ok) && S.money === 100000 - 220;
+    S.crises = []; S.rooms.forEach(x => { x.damaged = false; });
+    // ---- the games each action uses ----
+    const games = { lift: ['timing', 'choice', 'choice', null], pool: ['tap', 'order', 'choice', null], lock: ['timing', 'choice', 'order', null] };
+    o.gameTypes = Object.keys(games).every(k => CRISES[k].actions.every((a, i) => (a.game ? a.game.type : null) === games[k][i]));
+    o.artKeys = ['lift-doors', 'lock-pick', 'pool-skim'].every(k => { const [c, a] = k.split('-'); return CRISES[c].actions.some(x => x.key === a && x.game); });
+    // ---- safeguards and medals ----
+    o.guards = ['lift', 'pool', 'lock'].every(k => SAFEGUARDS[k] && SAFEGUARDS[k].cost > 0 && SAFEGUARDS[k].name && SAFEGUARDS[k].text) && Object.keys(SAFEGUARDS).length === Object.keys(CRISES).length;
+    buySafeguard('lift'); const gl = startCrisis('lift', false); o.guardedLift = gl.guarded === true && gl.trouble === 20; S.crises = [];
+    S.medals = {}; S.crisisKinds = {};
+    for (const [k, m] of [['lift', 'liftrescue'], ['pool', 'poolpatrol'], ['lock', 'locksmith']]) { const c = startCrisis(k, false); c.fix = 95; resolveCrisis(c); o['medal_' + k] = S.medals[m] !== undefined; }
+    // ---- a warning for each ----
+    o.warnings = ['lift', 'pool', 'lock'].every(k => { S.warning = null; S.crises = []; const w = startWarning(k); const ok = w.key === k && S.mail.items[0].subject === 'Warning: ' + CRISES[k].name + ' may be coming'; S.warning = null; return ok; });
+    // ---- an unplayed night: trouble grows and the guests mind ----
+    S.warning = null; S.crises = []; S.guests.forEach(g => { g.happiness = 80; }); const nl = startCrisis('pool', false); nl.skipNight = false; const t0 = nl.trouble; const ev = []; runCrises(ev);
+    o.nightly = nl.trouble === t0 + CRISES.pool.growth && S.guests[0].happiness === 80 - Math.round(CRISES.pool.mood * (0.5 + t0 / 100)) && ev.length === 1;
+    S.crises = []; S.warning = null;
+    return o; })()`));
+  const bad = Object.entries(r).filter(([k, v]) => v !== true).map(([k, v]) => `${k} is ${JSON.stringify(v)}`);
+  bad.forEach(b => fail('lift, pool and door crises: ' + b));
+  if (!bad.length) ok('lift, pool and door crises: when each can happen (the lift and pool need those facilities), the pool closing, the stuck door and the lock pick, the games, safeguards, medals, warnings and the nightly rise');
 }
 
 /* ---------- guest faces ---------- */

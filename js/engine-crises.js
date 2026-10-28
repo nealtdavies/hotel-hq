@@ -9,7 +9,7 @@
    and standards.
    Many crises give a warning first, with things to do to prepare: two preparations stop it, one makes it milder. Safeguards bought
    in advance make a crisis rarer and milder. Medals are earned for good play, and unlock perks.
-   Nothing here injures anyone: these are mishaps with pipes, power, pests, weather and online gossip.
+   Nothing here injures anyone: these are mishaps with pipes, power, pests, weather, lifts, pools, locks and online gossip.
    S.crises is the list of live ones (at most CRISIS.maxActive). S.crisisLast is the day the last one began. */
 
 const CRISIS = { minDay: 8, maxActive: 1, cooldown: 6, baseChance: 0.07, escalate: 0.25, startTrouble: 40, resolveBonus: 8, warnChance: 0.6, warnPoints: 2, medalBonus: 100, preventBonus: 60, perfectBoost: 1.25 };
@@ -39,6 +39,9 @@ const MEDALS = [
   { key: 'pests', name: 'Pest patrol', desc: 'Solve a pest scare.' },
   { key: 'storm', name: 'Storm chaser', desc: 'Solve storm damage.' },
   { key: 'goodname', name: 'Good name', desc: 'Solve a bad reviews crisis.' },
+  { key: 'liftrescue', name: 'Lift rescuer', desc: 'Solve a stuck lift.' },
+  { key: 'poolpatrol', name: 'Pool patrol', desc: 'Solve a murky pool.' },
+  { key: 'locksmith', name: 'Master locksmith', desc: 'Solve a stuck door.' },
   { key: 'prepared', name: 'Fully prepared', desc: 'Buy every safeguard.' },
   { key: 'wordsmith', name: 'Wordsmith', desc: 'Write five notices for your guests.' },
   { key: 'favourite', name: 'Inspector\'s favourite', desc: 'Get Excellent from the Star Inspector twice.' },
@@ -155,6 +158,61 @@ const CRISES = {
           { prompt: 'A family says they loved the pool. What do you say?', options: [{ t: 'That is lovely to hear! Would you mind sharing that in a review so other families can find us?', score: 2 }, { t: 'Great. Review us.', score: 1 }, { t: 'Then you owe us a review.', score: 0 }] }]),
         ok: 'A guest wrote a lovely review.', bad: 'Nobody got round to it.', after: () => addReview(drawPerson().name, 5, 'Staying here was wonderful, and the staff could not do enough for us.') },
       { key: 'apology', label: 'Post an honest message', hint: 'Explain what really happened. Free, and it takes the sting out.', odds: null, fix: 5, relief: 10, ok: 'People respected the honest message.', after: c => { c.reviewHit = 0; } }
+    ] },
+  lift: { name: 'Stuck lift', w: 2, rooms: 0, growth: 11, mood: 4, fine: 400, reward: 320, reviewText: 'The lift stopped with guests inside and it took far too long to get them out.', staffVoice: 'Maintenance',
+    can: () => hasFacility('lift') && S.guests.length >= 2,
+    intro: () => 'The lift has stopped between floors with guests inside. Everyone is safe, but they are stuck, the doors will not budge, and a crowd is gathering at the stairs.',
+    warn: { text: 'The lift has been jerking and making odd noises all morning. It may stop completely.',
+      prep: [{ key: 'inspect', label: 'Check the lift', hint: 'A proper look at the motor and the doors.', cost: 50, role: 'Maintenance', jobs: 1 }, { key: 'engineer', label: 'Put a lift engineer on standby', hint: 'They will come fast if it happens.', cost: 120 }] },
+    voices: { guest: [['The lift gave a little jolt. I hope that is all.', 'The lift is slow today, is it not?'], ['We have stopped between floors! Is somebody coming?', 'The lift has stopped and the doors will not open.'], ['We have been in here for ages! Please get us out!', 'It is hot in here and we want to get out now!']],
+      staff: [['I can hear them and they are fine. I am on my way with the tools.', 'I know what is wrong. The doors are just stuck.'], ['The doors are jammed and I need to open them carefully.', 'They are fine in there, but we must hurry.'], ['Everyone is waiting and the lift is still stuck! I need help!', 'It is taking too long. We have to get those doors open now!']] },
+    actions: [
+      { key: 'doors', label: 'Open the lift doors', hint: 'Slow and careful. Stop the marker in the green to open the doors just wide enough to help everyone out.', role: 'Maintenance', jobs: 1, odds: 0.8, fix: 30, relief: 18, risk: 10, game: { type: 'timing', what: 'Open the doors just wide enough to step out.' }, ok: 'The doors slid open and everyone stepped out safely.', bad: 'The doors jammed again. They need another go.' },
+      { key: 'engineer', label: 'Call the lift engineer', hint: 'Costly, but they know every lift. Tell them what you know.', cost: 380, odds: 0.9, fix: 35, relief: 20, risk: 5,
+        game: GAME_CHOICE([{ prompt: 'The lift engineer answers. What do you tell them?', options: [{ t: 'The lift has stopped between the first and second floors with guests inside. Everyone is safe and we are talking to them.', score: 2 }, { t: 'The lift is broken, please come quickly!', score: 1 }, { t: 'It is a bit stuck. Come if you are passing.', score: 0 }] },
+          { prompt: 'The engineer asks if you have switched the lift off.', options: [{ t: 'Yes, it is switched off at the control panel and a member of staff is at the lift doors.', score: 2 }, { t: 'I think somebody did that.', score: 1 }, { t: 'No, we thought you would do that.', score: 0 }] }]),
+        ok: 'The engineer reset the lift and made sure it was safe.', bad: 'The engineer could not get to you until later.' },
+      { key: 'talk', label: 'Talk to the guests inside', hint: 'Keep them calm and chatting. What you say matters.', role: 'Receptionist', jobs: 1, odds: 0.75, fix: 20, relief: 14, risk: 6,
+        game: GAME_CHOICE([{ prompt: 'The guests in the lift are worried. What do you say through the doors?', options: [{ t: 'Please do not worry. You are safe, help is on its way, and I will stay right here and talk to you until the doors are open.', score: 2 }, { t: 'Someone is coming soon.', score: 1 }, { t: 'There is nothing I can do. Just wait.', score: 0 }] },
+          { prompt: 'A child in the lift asks how long it will take.', options: [{ t: 'Not long at all. Shall we play a guessing game while we wait for the doors to open?', score: 2 }, { t: 'I do not know.', score: 1 }, { t: 'Longer than you would like.', score: 0 }] }]),
+        ok: 'The guests calmed down and even started to laugh.', bad: 'The guests were more worried than ever.' },
+      { key: 'drinks', label: 'Send cold drinks and sweets to the stairs', hint: 'Cheer up everyone who is waiting.', cost: 60, odds: null, fix: 0, relief: 10, ok: 'Cold drinks and sweets helped everyone wait patiently.', after: () => crisisMood(6) }
+    ] },
+  pool: { name: 'Murky pool', w: 2, rooms: 0, closes: ['pool'], growth: 10, mood: 3, fine: 400, reward: 330, reviewText: 'The pool was green and closed. It looked nothing like the photos.', staffVoice: 'Maintenance',
+    can: () => hasFacility('pool'),
+    intro: () => 'The pool has turned cloudy and green, with leaves and bits floating everywhere. It has to close until it is clean, and guests are disappointed.',
+    warn: { text: 'The pool water is going cloudy and the filter is making a grinding noise. If nobody looks, it could turn murky.',
+      prep: [{ key: 'test', label: 'Test the water', hint: 'Check the chemicals and the filter.', cost: 30, role: 'Maintenance', jobs: 1 }, { key: 'cover', label: 'Order a pool cover', hint: 'Keeps the leaves and the dirt out.', cost: 70 }] },
+    voices: { guest: [['The pool looks a little cloudy today.', 'Is the pool water meant to be that colour?'], ['The pool is green! Can we still swim?', 'There are leaves all over the pool.'], ['The pool is disgusting! We came here to swim!', 'We want the pool open again, or our money back!']],
+      staff: [['It is just a bit of debris. We can skim it off.', 'I will test the water and sort it out.'], ['The water is murky and the filter is clogged. It needs a proper clean.', 'The pool is shut and there is a lot to clear.'], ['This will take forever if I do it alone!', 'The pool is a mess and everyone is asking when it will open!']] },
+    actions: [
+      { key: 'skim', label: 'Skim the pool clean', hint: 'Nets and brushes. Two jobs for maintenance. Tap every leaf before time runs out.', role: 'Maintenance', jobs: 2, odds: 0.8, fix: 25, relief: 12, risk: 8, game: { type: 'tap', patches: 6, what: 'Tap each leaf to scoop it out.' }, ok: 'The surface is clear and sparkling.', bad: 'Plenty of leaves are still floating about.' },
+      { key: 'chemicals', label: 'Rebalance the water', hint: 'Test, treat, run the filter, then test again. Put the steps in the right order.', cost: 60, role: 'Maintenance', jobs: 1, odds: 0.75, fix: 25, relief: 14, risk: 8,
+        game: { type: 'order', variants: [{ prompt: 'Put the pool-cleaning steps in the right order.', steps: ['Test the water', 'Add the right chemicals', 'Run the filter for a few hours', 'Test the water again'] }, { prompt: 'Put the steps in the right order.', steps: ['Skim off the leaves', 'Test the water', 'Treat the water', 'Check it is safe to swim'] }] },
+        ok: 'The water is clear, balanced and safe to swim in.', bad: 'The water is still cloudy. Something was missed.' },
+      { key: 'specialist', label: 'Call the pool specialist', hint: 'Costly, but they know pools. Tell them what you see.', cost: 300, odds: 0.9, fix: 35, relief: 20, risk: 5,
+        game: GAME_CHOICE([{ prompt: 'The pool specialist asks what is wrong with the pool.', options: [{ t: 'The water has gone green and cloudy, there are leaves on the surface, and the filter is making a grinding noise. We have closed the pool.', score: 2 }, { t: 'The pool looks dirty.', score: 1 }, { t: 'It is fine really. Just a quick look.', score: 0 }] },
+          { prompt: 'They ask when the chemicals were last checked.', options: [{ t: 'Two days ago. The readings were normal then, so something has changed quickly.', score: 2 }, { t: 'Quite recently, I think.', score: 1 }, { t: 'I have no idea. We never write it down.', score: 0 }] }]),
+        ok: 'The specialist cleaned the filter and put the water right.', bad: 'The specialist could only come tomorrow.' },
+      { key: 'lollies', label: 'Hand out ice lollies on the terrace', hint: 'Sunshine, ice lollies and a smile. Cheers everyone up.', cost: 70, odds: null, fix: 0, relief: 10, ok: 'The terrace was full of happy guests with ice lollies.', after: () => crisisMood(6) }
+    ] },
+  lock: { name: 'Stuck room door', w: 2, rooms: 1, repairCost: 120, growth: 9, mood: 3, fine: 350, reward: 280, reviewText: 'The door to our room jammed and it took ages for anyone to help.', staffVoice: 'Maintenance',
+    can: () => crisisSpareRooms() >= 4,
+    intro: c => `The lock on ${roomNamesOf(c)} has jammed and the door will not open. The room is out of service, and a guest is waiting in the lobby for their key.`,
+    warn: { text: 'Several room keys have been sticking in their locks all week. One door may jam completely.',
+      prep: [{ key: 'oil', label: 'Oil the locks', hint: 'A drop of oil in every keyhole.', cost: 30, role: 'Maintenance', jobs: 1 }, { key: 'spares', label: 'Check the spare keys', hint: 'Make sure every master key works.', cost: 20, role: 'Receptionist', jobs: 1 }] },
+    voices: { guest: [['My key was a bit stiff, but it worked in the end.', 'The key is hard to turn today.'], ['Our door will not open! Can somebody come?', 'We are locked out and our things are inside.'], ['We have been waiting in the lobby for ages!', 'This is ridiculous. We just want to get into our room!']],
+      staff: [['I have my toolkit. It is only a stiff lock.', 'I have seen worse. I will have it open in a minute.'], ['The lock is properly jammed. I need to be careful not to break it.', 'It is taking longer than I thought.'], ['The guest is getting cross and the door will not budge!', 'I need help with this lock, and quickly!']] },
+    actions: [
+      { key: 'pick', label: 'Pick the lock', hint: 'Gentle and precise. Stop the marker in the green to lift the last pin and turn the lock.', role: 'Maintenance', jobs: 1, odds: 0.8, fix: 30, relief: 18, risk: 10, game: { type: 'timing', what: 'Lift the last pin at just the right moment.' }, ok: 'Click! The lock turned and the door swung open.', bad: 'The pick slipped and the pin dropped back.', after: c => crisisRepair(c, 1) },
+      { key: 'locksmith', label: 'Call a locksmith', hint: 'Costly, but they open anything. Say what they need to know.', cost: 220, odds: 0.9, fix: 35, relief: 20, risk: 5,
+        game: GAME_CHOICE([{ prompt: 'The locksmith asks about the door.', options: [{ t: 'It is a guest room door on the first floor. The key goes in but will not turn, and nobody is inside.', score: 2 }, { t: 'A door is stuck.', score: 1 }, { t: 'I do not know which door. Come and find it.', score: 0 }] },
+          { prompt: 'The locksmith asks if you have tried the master key.', options: [{ t: 'Yes, and it will not turn either, so I think the lock itself has jammed. Please bring a new one.', score: 2 }, { t: 'I think so.', score: 1 }, { t: 'No, we do not have one.', score: 0 }] }]),
+        ok: 'The locksmith opened the door and fitted a new lock.', bad: 'The locksmith could not come until later.' },
+      { key: 'keys', label: 'Find the right key', hint: 'The master key lives in the key cabinet. Put the steps in the right order.', role: 'Receptionist', jobs: 1, odds: 0.75, fix: 20, relief: 10, risk: 6,
+        game: { type: 'order', variants: [{ prompt: 'Put the steps in the right order.', steps: ['Check the room number on the door', 'Find the right tag in the key cabinet', 'Try the master key gently', 'Open the door and check the room'] }, { prompt: 'Put the steps in the right order.', steps: ['Ask the guest which room it is', 'Open the key cabinet', 'Take out the master key', 'Try it in the lock'] }] },
+        ok: 'The master key turned and the door opened.', bad: 'It was the wrong key, and now the lock is stiffer.' },
+      { key: 'lobby', label: 'Look after the waiting guest', hint: 'A comfy chair and a hot drink while they wait.', cost: 40, odds: null, fix: 0, relief: 10, ok: 'The guest enjoyed a hot drink and a comfy chair in the lobby.', after: () => crisisMood(6) }
     ] }
 };
 /* A notice for the guests, in the player's own words, is offered in every crisis. Nothing written is marked. */
@@ -168,7 +226,10 @@ const SAFEGUARDS = {
   power: { name: 'Backup generator', cost: 900, text: 'A proper generator keeps the lights and the kitchen on in a power cut.' },
   mice: { name: 'Pest-proofing', cost: 600, text: 'Every gap is sealed. Pest scares are rarer and never close the kitchen.' },
   roof: { name: 'New roof tiles', cost: 700, text: 'A sound roof. Storm damage is rarer and hurts fewer rooms.' },
-  gossip: { name: 'Guest care programme', cost: 400, text: 'Happy guests tell their friends. Bad reviews online are rarer and never drag your reviews down.' }
+  gossip: { name: 'Guest care programme', cost: 400, text: 'Happy guests tell their friends. Bad reviews online are rarer and never drag your reviews down.' },
+  lift: { name: 'Lift servicing plan', cost: 600, text: 'The lift is serviced every month. Stuck lifts become much rarer and are less serious.' },
+  pool: { name: 'Pool care contract', cost: 500, text: 'An expert looks after the water every week. A murky pool becomes much rarer and is less serious.' },
+  lock: { name: 'New door locks', cost: 450, text: 'Every room has a new smooth lock. Stuck doors become much rarer and are less serious.' }
 };
 const hasGuard = key => !!(S.safeguards && S.safeguards[key] !== undefined);
 function buySafeguard(key) {
@@ -430,7 +491,7 @@ function resolveCrisis(c) {
   if (S.stats.crisesSolved === 1) give('coolhead');
   if (days <= 1) give('quickfix');
   if (S.stats.crisesSolved >= 3 && !(S.stats.crisesBlown > 0)) give('safehands');
-  give({ pipe: 'plumber', power: 'lights', mice: 'pests', roof: 'storm', gossip: 'goodname' }[c.key]);
+  give({ pipe: 'plumber', power: 'lights', mice: 'pests', roof: 'storm', gossip: 'goodname', lift: 'liftrescue', pool: 'poolpatrol', lock: 'locksmith' }[c.key]);
   if (Object.keys(CRISES).every(k => S.crisisKinds[k] !== undefined)) give('champion');
   return { resolved: true, reward, hero, medals: won };
 }

@@ -132,7 +132,7 @@ bottom-right | feral-cats | Photorealistic family hotel suite overrun by about t
 ## Grid 22 (OPTIONAL)
 top-left | frenchie-break-in | Photorealistic luxury hotel suite overrun by about eight escaped French bulldogs getting into silly trouble: one stuck behind the sofa, one with its head in a waste bin, others bouncing on the bed, cushions and papers everywhere, terrace doors open to the ocean, bright daylight
 
-## Crisis pictures (5, optional)
+## Crisis pictures (8, optional)
 
 Save each as assets/scenes/crisis-<name>.jpg. Same style prefix as above. Full table in IMAGE-GUIDE.md.
 crisis-pipe | Photorealistic hotel corridor with water streaming from a burst ceiling pipe, wet carpet, buckets catching the drips, a yellow wet-floor sign, a maintenance worker with a wrench looking calm
@@ -140,3 +140,6 @@ crisis-power | Photorealistic hotel lobby during a power cut at dusk, reception 
 crisis-mice | Photorealistic spotless hotel kitchen with a tiny house mouse peeking from behind a sack of flour, a chef with a surprised look pointing at it, a closed sign on the kitchen door
 crisis-roof | Photorealistic top-floor hotel corridor with rain dripping through the ceiling into buckets, storm clouds through a window, a maintenance worker holding a tarpaulin and a ladder
 crisis-gossip | Photorealistic hotel reception desk, a receptionist reading a laptop with a worried face, a phone on the desk showing a row of stars with no readable text, guests chatting quietly behind
+crisis-lift | Photorealistic hotel lobby with a closed lift door, a maintenance worker with a toolkit calmly reaching for the door, a few smiling guests waiting nearby with their luggage, an out-of-order sign on a stand
+crisis-pool | Photorealistic hotel indoor pool with slightly cloudy green water and a few leaves floating on top, a maintenance worker with a long net skimming the surface, a closed sign, sunshine through the windows
+crisis-lock | Photorealistic hotel corridor with a closed room door, a maintenance worker kneeling at the lock with a small toolkit, a friendly guest with a suitcase waiting patiently beside them

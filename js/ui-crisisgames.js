@@ -9,9 +9,10 @@
 const GAME_HELP = { timing: 'Press Stop when the moving marker is inside the green zone. The middle is a perfect hit.', tap: 'Tap every patch before the time runs out.', choice: 'Read each answer, then pick the best one.', order: 'Tap the steps in the order they should happen.' };
 /* Optional artwork, in assets/games (see GAME-ART.md). Each game may have a scene behind it (<crisis>-<action>-bg.jpg), the moving timing games
    a set of pictures that swap as the marker moves (-f1.png, -f2.png and so on, the middle one is the "just right" pose), and the tapping games
-   a transparent picture for each patch (patch-wet.png, patch-crumb.png). Whatever is missing is simply not drawn, so every game works with no
+   a transparent picture for each patch (patch-wet.png, patch-crumb.png, patch-leaf.png). Whatever is missing is simply not drawn, so every game works with no
    artwork at all. What exists is found out just before the game opens. */
-const GAME_ART = { 'pipe-valve': { frames: 7 }, 'power-generator': { frames: 7 }, 'roof-tarp': { frames: 7 }, 'pipe-dry': { patch: 'wet' }, 'roof-dry': { patch: 'wet' }, 'mice-clean': { patch: 'crumb' } };
+const GAME_ART = { 'pipe-valve': { frames: 7 }, 'power-generator': { frames: 7 }, 'roof-tarp': { frames: 7 }, 'pipe-dry': { patch: 'wet' }, 'roof-dry': { patch: 'wet' }, 'mice-clean': { patch: 'crumb' },
+  'lift-doors': { frames: 7 }, 'lock-pick': { frames: 7 }, 'pool-skim': { patch: 'leaf' } };
 const PATCH_SLOTS = [[16, 30], [48, 22], [80, 34], [26, 66], [58, 72], [84, 64]];   // where the patches sit on a scene, as percentages
 const artSrc = (key, file) => `assets/games/${key}-${file}`;
 const loadsOk = src => new Promise(res => { const i = new Image(), t = setTimeout(() => res(false), 1500); i.onload = () => { clearTimeout(t); res(true); }; i.onerror = () => { clearTimeout(t); res(false); }; i.src = src; });

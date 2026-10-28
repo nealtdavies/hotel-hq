@@ -355,7 +355,7 @@ Square or landscape plated-food photos work best, shot from above or at 45 degre
 | assets/menu/lemonade.jpg | Fresh lemonade | Photorealistic plated fresh lemonade (squeezed to order), restaurant presentation, natural light, shallow depth of field, no text. |
 | assets/menu/coffee.jpg | Coffee | Photorealistic plated coffee (espresso, latte or cappuccino), restaurant presentation, natural light, shallow depth of field, no text. |
 
-## Crisis pictures (5 images, optional)
+## Crisis pictures (8 images, optional)
 
 Each multi-day crisis can have one wide picture, shown at the top of its card on the Crisis page and in the pop-up when it begins. If a file is missing, nothing shows, so these can be added whenever they are ready. Same style as the scenario pictures: wide 16:9, subject in the middle. Nothing in any of them should show anyone hurt or frightened.
 
@@ -366,3 +366,6 @@ Each multi-day crisis can have one wide picture, shown at the top of its card on
 | assets/scenes/crisis-mice.jpg | Pest scare in the kitchen | Photorealistic spotless hotel kitchen with a tiny house mouse peeking out from behind a sack of flour, a chef with a surprised look pointing at it, steel worktops, a closed sign hanging on the kitchen door |
 | assets/scenes/crisis-roof.jpg | Storm damage | Photorealistic top-floor hotel corridor with rain dripping through the ceiling into buckets, storm clouds and rain visible through a window, a maintenance worker holding a tarpaulin and a ladder |
 | assets/scenes/crisis-gossip.jpg | Bad reviews online | Photorealistic hotel reception desk, a receptionist reading a laptop with a worried face, a phone on the desk showing a row of stars with no readable text, guests chatting quietly in the lobby behind |
+| assets/scenes/crisis-lift.jpg | Stuck lift | Photorealistic hotel lobby with a closed lift door, a maintenance worker with a toolkit calmly reaching for the door, a few smiling guests waiting nearby with their luggage, an out-of-order sign on a stand |
+| assets/scenes/crisis-pool.jpg | Murky pool | Photorealistic hotel indoor pool with slightly cloudy green water and a few leaves floating on top, a maintenance worker with a long net skimming the surface, a closed sign, sunshine through the windows |
+| assets/scenes/crisis-lock.jpg | Stuck room door | Photorealistic hotel corridor with a closed room door, a maintenance worker kneeling at the lock with a small toolkit, a friendly guest with a suitcase waiting patiently beside them |

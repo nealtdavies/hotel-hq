@@ -1064,7 +1064,7 @@ const assert = (c, m) => { if (!c) { failed++; console.error('FAIL:', m); } else
     assert(/hero of the hotel/i.test(await page.locator('.confcard').innerText()) && await page.evaluate(() => (document.querySelector('.confcard .conf-title').innerText) === S.heroLog[0].name), 'the hero gets a certificate');
     await page.evaluate(() => closeModal());
     assert(await page.locator('.crisis-btn').count() === 0 && await page.locator('.crisis-card').count() === 0 && (await page.locator('.content').innerText()).includes('Nothing is wrong right now'), 'and the crisis is gone');
-    assert(await page.locator('.medal.won').count() >= 3 && (await page.locator('.content').innerText()).includes('Perks') && await page.locator('.medal').count() === 15, 'the medals page shows fifteen medals and the perks they unlock');
+    assert(await page.locator('.medal.won').count() >= 3 && (await page.locator('.content').innerText()).includes('Perks') && await page.locator('.medal').count() === 18, 'the medals page shows eighteen medals and the perks they unlock');
     assert(await page.locator('.section-title:has-text("Heroes of the hotel") + .card [data-act="heroCert"]').count() === 1, 'heroes are listed');
     await page.evaluate(() => { ui.staffTab = 'people'; actions.nav({ view: 'staff' }); });
     assert(await page.locator('.card:has-text("Hero") .chip.warn:text-is("Hero")').count() >= 1, 'a hero shows a Hero badge in the team list'); await page.evaluate(() => { ui.staffTab = 'shift'; });
