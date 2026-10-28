@@ -1037,7 +1037,16 @@ const assert = (c, m) => { if (!c) { failed++; console.error('FAIL:', m); } else
     // a tapping game: drying the rooms (the zone and the timer are separate games)
     await page.click('.crisis-card .pick[data-key="dry"] >> nth=0'); await page.waitForTimeout(250);
     assert(await page.locator('.modal .patch:not(.gone)').count() === 6 && (await page.locator('.modal #tapTime').innerText()).includes('seconds left'), 'a tapping game shows six patches and a timer');
-    for (let i = 0; i < 6; i++) await page.click('.modal .patch:not(.gone) >> nth=0');
+    await page.evaluate(() => { ui.game.frozen = true; });   // the clock is held so the test taps at its own pace
+    assert(await page.evaluate(() => ui.game.spec.taps === 10 && ui.game.spec.seconds >= 10), 'each patch needs ten taps, and there is a fair amount of time for them');
+    await page.click('.modal .patch:not(.gone) >> nth=0');
+    const op1 = await page.evaluate(() => parseFloat(document.querySelector('.modal .patch').style.opacity));
+    for (let i = 0; i < 8; i++) await page.click('.modal .patch:not(.gone) >> nth=0');
+    const op9 = await page.evaluate(() => parseFloat(document.querySelector('.modal .patch').style.opacity));
+    assert(op1 < 1 && op1 > 0.8 && op9 < 0.25 && op9 > 0.05 && await page.locator('.modal .patch:not(.gone)').count() === 6, 'each tap makes the patch fainter, and nine taps leave it almost clear but still there');
+    await page.click('.modal .patch:not(.gone) >> nth=0');
+    assert(await page.locator('.modal .patch:not(.gone)').count() === 5 && (await page.locator('.modal .muted.right').innerText()).includes('1 of 6 cleared'), 'the tenth tap clears the patch');
+    for (let i = 0; i < 50; i++) await page.click('.modal .patch:not(.gone) >> nth=0');
     await page.waitForTimeout(200);
     assert(await page.evaluate(() => S.crises.length === 1 ? S.crises[0].acted.dry === S.day : true) && (await page.locator('#toasts').innerText().catch(() => '')).length >= 0, 'tapping every patch finishes the game');
     // leaving it to chance still works
@@ -1129,7 +1138,8 @@ const assert = (c, m) => { if (!c) { failed++; console.error('FAIL:', m); } else
     await page.evaluate(() => { S.staff.forEach(x => { x.used = 0; }); render(); });
     await page.click('.crisis-card .pick[data-key="dry"] >> nth=0'); await page.waitForTimeout(400);
     assert(await page.locator('.modal .tapstage .patch.art .patchimg').count() === 6 && await page.locator('.modal .tapstage .gbg').count() === 1, 'a tapping game puts transparent patches on its scene');
-    for (let i = 0; i < 6; i++) await page.click('.modal .tapstage .patch >> nth=0');
+    await page.evaluate(() => { ui.game.frozen = true; });
+    for (let i = 0; i < 60; i++) await page.click('.modal .tapstage .patch >> nth=0');
     await page.waitForTimeout(250);
     assert(await page.evaluate(() => ui.game === null && S.crises[0].acted.dry === S.day), 'tapping them finishes the game');
     await page.click('.crisis-card [data-act="crisisPlay"][data-key="plumber"]'); await page.waitForTimeout(400);

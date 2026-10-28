@@ -12,7 +12,7 @@
    Nothing here injures anyone: these are mishaps with pipes, power, pests, weather, lifts, pools, locks and online gossip.
    S.crises is the list of live ones (at most CRISIS.maxActive). S.crisisLast is the day the last one began. */
 
-const CRISIS = { minDay: 8, maxActive: 1, cooldown: 6, baseChance: 0.07, escalate: 0.25, startTrouble: 40, resolveBonus: 8, warnChance: 0.6, warnPoints: 2, medalBonus: 100, preventBonus: 60, perfectBoost: 1.25 };
+const CRISIS = { minDay: 8, maxActive: 1, cooldown: 6, baseChance: 0.07, escalate: 0.25, startTrouble: 40, resolveBonus: 8, warnChance: 0.6, warnPoints: 2, medalBonus: 100, preventBonus: 60, perfectBoost: 1.25, tapHits: 10, tapSeconds: 13 };
 
 const crisisById = id => S.crises.find(c => c.id === id) || null;
 const crisisClosed = key => S.crises.some(c => (c.closes || []).includes(key));
@@ -87,7 +87,7 @@ const CRISES = {
         game: GAME_CHOICE([{ prompt: 'The plumber answers. What do you tell them?', options: [{ t: 'A pipe has burst and water is coming through the ceiling of the rooms below. We have turned the water off at the valve.', score: 2 }, { t: 'Please come quickly, there is water everywhere!', score: 1 }, { t: 'Something is a bit wet. Come when you can.', score: 0 }] },
           { prompt: 'The plumber asks you to describe the leak.', options: [{ t: 'It is coming from the pipe above the guest rooms, and the main valve is already shut.', score: 2 }, { t: 'It is a big leak, as far as I can tell.', score: 1 }, { t: 'It is just a few drips, I think.', score: 0 }] }]),
         ok: 'The plumber fixed the pipe properly.', bad: 'The plumber was stuck in traffic and arrived too late to help.' },
-      { key: 'dry', label: 'Dry out the rooms', hint: 'Towels, fans and elbow grease. Two jobs for housekeeping. Tap every wet patch before time runs out.', role: 'Housekeeper', jobs: 2, odds: 0.8, fix: 20, relief: 10, risk: 8, game: { type: 'tap', patches: 6, what: 'Tap each wet patch to dry it.' }, ok: 'The rooms are drying out nicely.', bad: 'The carpets are still soaking.', after: c => crisisRepair(c, 1) },
+      { key: 'dry', label: 'Dry out the rooms', hint: 'Towels, fans and elbow grease. Two jobs for housekeeping. Every wet patch takes about ten taps and fades a little with each one, so be quick.', role: 'Housekeeper', jobs: 2, odds: 0.8, fix: 20, relief: 10, risk: 8, game: { type: 'tap', patches: 6, what: 'Tap each wet patch ten times to dry it.' }, ok: 'The rooms are drying out nicely.', bad: 'The carpets are still soaking.', after: c => crisisRepair(c, 1) },
       { key: 'treat', label: 'Give guests a free treat', hint: 'Hot drinks and cake in the lounge. Cheers everyone up.', cost: 80, odds: null, fix: 0, relief: 8, ok: 'The guests enjoyed the treat and calmed down.', after: () => crisisMood(6) }
     ] },
   power: { name: 'Power cut', w: 3, rooms: 0, closes: ['restaurant'], growth: 14, mood: 4, fine: 400, reward: 300, reviewText: 'The lights went out and the hotel had no plan.', staffVoice: 'Maintenance',
@@ -116,7 +116,7 @@ const CRISES = {
     voices: { guest: [['I heard a rumour about the kitchen. Is everything all right?', 'Someone said there was a mouse. Surely not?'], ['Is it true there is a mouse in the kitchen? I am not sure about dinner.', 'We are not eating here tonight. We heard about the kitchen.'], ['A mouse! In the kitchen! We are leaving a review about this!', 'This is disgusting! We want a refund!']],
       staff: [['I have shut the kitchen as a precaution. We will get it sorted.', 'It is only a small problem and we have caught it early.'], ['I have checked every cupboard. We need a proper clean and some help.', 'The kitchen is shut and I do not like it. We must act.'], ['It is getting out of hand! Nobody will eat here!', 'We cannot keep the kitchen closed forever!']] },
     actions: [
-      { key: 'clean', label: 'Deep-clean the kitchen', hint: 'Every cupboard and corner. Two jobs for housekeeping. Tap every crumb before time runs out.', role: 'Housekeeper', jobs: 2, odds: 0.85, fix: 25, relief: 12, risk: 8, game: { type: 'tap', patches: 6, what: 'Tap each crumb to sweep it up.' }, ok: 'The kitchen is spotless.', bad: 'Something was missed and there are signs of a mouse again.' },
+      { key: 'clean', label: 'Deep-clean the kitchen', hint: 'Every cupboard and corner. Two jobs for housekeeping. Every pile takes about ten taps and shrinks a little with each one, so be quick.', role: 'Housekeeper', jobs: 2, odds: 0.85, fix: 25, relief: 12, risk: 8, game: { type: 'tap', patches: 6, what: 'Tap each pile of crumbs ten times to sweep it up.' }, ok: 'The kitchen is spotless.', bad: 'Something was missed and there are signs of a mouse again.' },
       { key: 'pest', label: 'Call pest control', hint: 'The experts. What you tell them helps them find the way in.', cost: 300, odds: 0.9, fix: 40, relief: 20, risk: 5,
         game: GAME_CHOICE([{ prompt: 'Pest control asks what you have seen.', options: [{ t: 'A mouse near the kitchen door, and crumbs by the storeroom. We have closed the kitchen.', score: 2 }, { t: 'A mouse, I think.', score: 1 }, { t: 'Nothing really. Just have a look around.', score: 0 }] },
           { prompt: 'They ask where the food is kept.', options: [{ t: 'In the storeroom next to the kitchen. It is locked now and we have moved the open packets.', score: 2 }, { t: 'In the kitchen somewhere.', score: 1 }, { t: 'I do not know. Ask the chef.', score: 0 }] }]),
@@ -137,7 +137,7 @@ const CRISES = {
         game: GAME_CHOICE([{ prompt: 'The roofer asks how bad the leak is.', options: [{ t: 'Tiles have blown off above two rooms and rain is coming in. We have covered it with a sheet for now.', score: 2 }, { t: 'The roof is leaking.', score: 1 }, { t: 'It is only a few drips, no rush.', score: 0 }] },
           { prompt: 'The roofer asks if anyone can get onto the roof safely.', options: [{ t: 'Yes, there is a hatch on the top floor. Please bring your own ladder and we will keep guests clear.', score: 2 }, { t: 'I think there is a way up.', score: 1 }, { t: 'Just climb up, you will find it.', score: 0 }] }]),
         ok: 'The roofer replaced the tiles.', bad: 'The roofer could not get up in the weather.' },
-      { key: 'dry', label: 'Dry and re-make the rooms', hint: 'Two jobs for housekeeping. Tap every wet patch before time runs out.', role: 'Housekeeper', jobs: 2, odds: 0.8, fix: 20, relief: 10, risk: 8, game: { type: 'tap', patches: 6, what: 'Tap each wet patch to dry it.' }, ok: 'The rooms are dry and fresh again.', bad: 'It is still damp in there.', after: c => crisisRepair(c, 1) },
+      { key: 'dry', label: 'Dry and re-make the rooms', hint: 'Two jobs for housekeeping. Every wet patch takes about ten taps and fades a little with each one, so be quick.', role: 'Housekeeper', jobs: 2, odds: 0.8, fix: 20, relief: 10, risk: 8, game: { type: 'tap', patches: 6, what: 'Tap each wet patch ten times to dry it.' }, ok: 'The rooms are dry and fresh again.', bad: 'It is still damp in there.', after: c => crisisRepair(c, 1) },
       { key: 'move', label: 'Move guests to dry rooms', hint: 'A bit of effort, and the guests are happy to move.', odds: null, fix: 0, relief: 8, ok: 'Everyone is settled in dry rooms.', after: () => crisisMood(4) }
     ] },
   gossip: { name: 'Bad reviews online', w: 2, rooms: 0, reviewHit: 1, growth: 9, mood: 2, fine: 350, reward: 300, reviewText: 'Not what the nasty posts said, but not great either.', staffVoice: 'Receptionist',
@@ -186,7 +186,7 @@ const CRISES = {
     voices: { guest: [['The pool looks a little cloudy today.', 'Is the pool water meant to be that colour?'], ['The pool is green! Can we still swim?', 'There are leaves all over the pool.'], ['The pool is disgusting! We came here to swim!', 'We want the pool open again, or our money back!']],
       staff: [['It is just a bit of debris. We can skim it off.', 'I will test the water and sort it out.'], ['The water is murky and the filter is clogged. It needs a proper clean.', 'The pool is shut and there is a lot to clear.'], ['This will take forever if I do it alone!', 'The pool is a mess and everyone is asking when it will open!']] },
     actions: [
-      { key: 'skim', label: 'Skim the pool clean', hint: 'Nets and brushes. Two jobs for maintenance. Tap every leaf before time runs out.', role: 'Maintenance', jobs: 2, odds: 0.8, fix: 25, relief: 12, risk: 8, game: { type: 'tap', patches: 6, what: 'Tap each leaf to scoop it out.' }, ok: 'The surface is clear and sparkling.', bad: 'Plenty of leaves are still floating about.' },
+      { key: 'skim', label: 'Skim the pool clean', hint: 'Nets and brushes. Two jobs for maintenance. Every leaf takes about ten taps and fades a little with each one, so be quick.', role: 'Maintenance', jobs: 2, odds: 0.8, fix: 25, relief: 12, risk: 8, game: { type: 'tap', patches: 6, what: 'Tap each leaf ten times to scoop it out.' }, ok: 'The surface is clear and sparkling.', bad: 'Plenty of leaves are still floating about.' },
       { key: 'chemicals', label: 'Rebalance the water', hint: 'Test, treat, run the filter, then test again. Put the steps in the right order.', cost: 60, role: 'Maintenance', jobs: 1, odds: 0.75, fix: 25, relief: 14, risk: 8,
         game: { type: 'order', variants: [{ prompt: 'Put the pool-cleaning steps in the right order.', steps: ['Test the water', 'Add the right chemicals', 'Run the filter for a few hours', 'Test the water again'] }, { prompt: 'Put the steps in the right order.', steps: ['Skim off the leaves', 'Test the water', 'Treat the water', 'Check it is safe to swim'] }] },
         ok: 'The water is clear, balanced and safe to swim in.', bad: 'The water is still cloudy. Something was missed.' },
@@ -371,7 +371,7 @@ function crisisGameSpec(a, staff) {
   const skill = staff ? staff.skill : 3, edge = traitEdge(staff), type = a.game.type, perks = crisisPerks(), helped = edge === type;
   const base = { type, skill, edge, helped, what: a.game.what || '' };
   if (type === 'timing') return Object.assign(base, { zone: clamp(0.16 + 0.05 * (skill - 3) + (helped ? 0.06 : 0) + perks.zone, 0.08, 0.45), sweepMs: 1200, center: 0.25 + Math.random() * 0.5 });
-  if (type === 'tap') return Object.assign(base, { patches: a.game.patches || 6, seconds: Math.round((7 + 0.8 * (skill - 3) + (helped ? 2 : 0)) * 10) / 10 });
+  if (type === 'tap') return Object.assign(base, { patches: a.game.patches || 6, taps: a.game.taps || CRISIS.tapHits, seconds: Math.round((CRISIS.tapSeconds + 1.2 * (skill - 3) + (helped ? 3 : 0)) * 10) / 10 });
   if (type === 'choice') {
     const v = pick(a.game.variants), hint = skill >= 4 || helped;
     let options = crisisShuffle(v.options.map(o => ({ t: crisisText(o.t), score: o.score })));
@@ -388,7 +388,7 @@ function crisisGameSpec(a, staff) {
    index picked in spec.options; order = how many wrong taps. Returns { success, perfect }. */
 function crisisJudge(spec, answer) {
   if (spec.type === 'timing') { const d = Math.abs(Number(answer) - spec.center); return { success: d <= spec.zone / 2, perfect: d <= spec.zone * 0.15 }; }
-  if (spec.type === 'tap') { const ok = answer.tapped >= spec.patches; return { success: ok, perfect: ok && answer.left >= spec.seconds * 0.4 }; }
+  if (spec.type === 'tap') { const ok = answer.tapped >= spec.patches; return { success: ok, perfect: ok && answer.left >= spec.seconds * 0.25 }; }
   if (spec.type === 'choice') { const o = spec.options[Number(answer)]; return { success: !!o && o.score >= 1, perfect: !!o && o.score === 2 }; }
   if (spec.type === 'order') { const m = Number(answer); return { success: m <= 1, perfect: m === 0 }; }
   return { success: false, perfect: false };

@@ -78,7 +78,7 @@ Most problems are still settled with one choice. The big ones are **crises**: th
 - **Actions cost something real.** Each crisis has four actions plus a written notice. They cost cash, jobs from the people on duty (the same three-jobs-a-day each person has for ordinary work, so a crisis competes with cleaning and requests), or both. Each can be done once a day.
 - **Skill games instead of dice.** Most actions are a short game, and how well she plays decides the result (`js/ui-crisisgames.js`, with the set-up and judging in `js/engine-crises.js`):
   - *Timing:* stop the moving marker in the green zone (valve, generator, tarpaulin). The middle is a perfect hit.
-  - *Tapping:* tap every patch before the time runs out (drying rooms, sweeping crumbs).
+  - *Tapping:* clear six patches before the time runs out (drying rooms, sweeping crumbs, skimming the pool). Each patch takes **ten taps** and gets fainter with every one, so it is a real-time race (13 seconds, plus 1.2 for each skill star above three and 3 for a Meticulous person).
   - *Word game:* pick the best of three replies (the plumber, the power company, pest control, the roofer, replying to reviews, asking for a review, the lift engineer, talking to guests in the lift, the pool specialist, the locksmith). Reading is the skill.
   - *Order:* put the steps in the right order (the barbecue).
   A **perfect** result gives a quarter more progress and relief. Anyone can instead **leave it to chance**, with the chance shown (and 8 points better for each skill star above three), so the games never block anyone.

@@ -6,7 +6,7 @@
    plays, or if she would rather not, she can leave it to chance from inside the pop-up. The rules and the judging are in engine-crises.js;
    this file only draws the games and passes what she did to crisisJudge. ui.game holds the game being played. */
 
-const GAME_HELP = { timing: 'Press Stop when the moving marker is inside the green zone. The middle is a perfect hit.', tap: 'Tap every patch before the time runs out.', choice: 'Read each answer, then pick the best one.', order: 'Tap the steps in the order they should happen.' };
+const GAME_HELP = { timing: 'Press Stop when the moving marker is inside the green zone. The middle is a perfect hit.', tap: 'Tap each patch again and again. It fades a little with every tap and is gone after about ten. Clear them all before the time runs out.', choice: 'Read each answer, then pick the best one.', order: 'Tap the steps in the order they should happen.' };
 /* Optional artwork, in assets/games (see GAME-ART.md). Each game may have a scene behind it (<crisis>-<action>-bg.jpg), the moving timing games
    a set of pictures that swap as the marker moves (-f1.png, -f2.png and so on, the middle one is the "just right" pose), and the tapping games
    a transparent picture for each patch (patch-wet.png, patch-crumb.png, patch-leaf.png). Whatever is missing is simply not drawn, so every game works with no
@@ -21,6 +21,8 @@ async function probeArt(key) {
   const [bg, patch, ...found] = await Promise.all([loadsOk(artSrc(key, 'bg.jpg')), patchSrc ? loadsOk(patchSrc) : false, ...files.map(loadsOk)]);
   return { key, bg: bg ? artSrc(key, 'bg.jpg') : null, patch: patch ? patchSrc : null, frames: files.filter((_, i) => found[i]) };
 }
+/* A patch fades with every tap, from solid to almost clear on the last one. */
+const patchFade = (g, i) => (1 - ((g.hits && g.hits[i]) || 0) / g.spec.taps * 0.9).toFixed(2);
 const artImg = (src, cls) => `<img class="${cls}" src="${esc(src)}" alt="" draggable="false">`;
 const reducedMotion = () => !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 
@@ -38,7 +40,7 @@ actions.crisisPlay = async d => {
   if (!crisisById(c.id)) return;
   const spec = crisisGameSpec(a, staff);
   if (spec.type === 'timing' && art.frames.length >= 2) spec.center = 0.5;   // the middle picture is the "just right" pose
-  ui.game = { id: c.id, key: a.key, staffId: staff ? staff.id : undefined, label: a.label, spec, odds: crisisOdds(a, staff), who: staff ? staff.id : null, art, pos: 0, frozen: false, tapped: [], left: spec.seconds || 0, picked: null, next: 0, mistakes: 0, done: [] };
+  ui.game = { id: c.id, key: a.key, staffId: staff ? staff.id : undefined, label: a.label, spec, odds: crisisOdds(a, staff), who: staff ? staff.id : null, art, pos: 0, frozen: false, tapped: [], hits: {}, left: spec.seconds || 0, picked: null, next: 0, mistakes: 0, done: [] };
   openModal({ type: 'crisisGame' });
 };
 /* The game is over: hand the result to the engine. */
@@ -65,9 +67,9 @@ function gameBody(g) {
     <div class="actions" style="justify-content:center"><button class="btn primary big" data-act="tgStop" data-autofocus>Stop!</button></div>`;
   if (sp.type === 'tap') {
     const slots = Array.from({ length: sp.patches }, (_, i) => i), inner = i => art.patch ? artImg(art.patch, 'patchimg') : '';
-    const head = `<div class="row small"><span id="tapTime"><b>${g.left.toFixed(1)}</b> seconds left</span><span class="muted right">${g.tapped.length} of ${sp.patches}</span></div><div class="bar" style="margin:6px 0"><i id="tapBar" style="width:${Math.max(0, g.left / sp.seconds * 100)}%"></i></div>`;
-    if (art.bg) return `${head}<div class="gstage tapstage">${artImg(art.bg, 'gbg')}${slots.map(i => g.tapped.includes(i) ? '' : `<button class="patch ${art.patch ? 'art' : ''}" data-act="tapPatch" data-i="${i}" aria-label="Patch ${i + 1}" style="left:${PATCH_SLOTS[i % PATCH_SLOTS.length][0]}%;top:${PATCH_SLOTS[i % PATCH_SLOTS.length][1]}%">${inner(i)}</button>`).join('')}</div>`;
-    return `${head}<div class="patches">${slots.map(i => g.tapped.includes(i) ? '<span class="patch gone"></span>' : `<button class="patch ${art.patch ? 'art' : ''}" data-act="tapPatch" data-i="${i}" aria-label="Patch ${i + 1}" style="--j:${(i * 37) % 13}">${inner(i)}</button>`).join('')}</div>`;
+    const head = `<div class="row small"><span id="tapTime"><b>${g.left.toFixed(1)}</b> seconds left</span><span class="muted right">${g.tapped.length} of ${sp.patches} cleared</span></div><div class="bar" style="margin:6px 0"><i id="tapBar" style="width:${Math.max(0, g.left / sp.seconds * 100)}%"></i></div>`;
+    if (art.bg) return `${head}<div class="gstage tapstage">${artImg(art.bg, 'gbg')}${slots.map(i => g.tapped.includes(i) ? '' : `<button class="patch ${art.patch ? 'art' : ''}" data-act="tapPatch" data-i="${i}" aria-label="Patch ${i + 1}" style="opacity:${patchFade(g, i)};left:${PATCH_SLOTS[i % PATCH_SLOTS.length][0]}%;top:${PATCH_SLOTS[i % PATCH_SLOTS.length][1]}%">${inner(i)}</button>`).join('')}</div>`;
+    return `${head}<div class="patches">${slots.map(i => g.tapped.includes(i) ? '<span class="patch gone"></span>' : `<button class="patch ${art.patch ? 'art' : ''}" data-act="tapPatch" data-i="${i}" aria-label="Patch ${i + 1}" style="opacity:${patchFade(g, i)};--j:${(i * 37) % 13}">${inner(i)}</button>`).join('')}</div>`;
   }
   if (sp.type === 'choice') {
     if (g.picked !== null) {
@@ -98,9 +100,12 @@ MODALS.crisisGame = () => {
 /* ---------- Playing ---------- */
 actions.tgStop = () => { const g = ui.game; if (g && g.spec.type === 'timing') finishCrisisGame(crisisJudge(g.spec, g.pos)); };
 actions.tapPatch = d => {
-  const g = ui.game;
-  if (!g || g.spec.type !== 'tap' || g.tapped.includes(Number(d.i))) return;
-  g.tapped.push(Number(d.i));
+  const g = ui.game, i = Number(d.i);
+  if (!g || g.spec.type !== 'tap' || g.tapped.includes(i)) return;
+  g.hits[i] = (g.hits[i] || 0) + 1;
+  const el = document.querySelector(`.modal .patch[data-i="${i}"]`);   // only this patch is redrawn, so rapid tapping stays smooth
+  if (g.hits[i] < g.spec.taps) { if (el) el.style.opacity = patchFade(g, i); return; }
+  g.tapped.push(i);
   if (g.tapped.length >= g.spec.patches) return finishCrisisGame(crisisJudge(g.spec, { tapped: g.tapped.length, left: g.left }));
   render();
 };
