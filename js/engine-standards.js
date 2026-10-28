@@ -68,6 +68,7 @@ function runInspection(events) {
   st.next = S.day + rndRange(STANDARDS.gap[0], STANDARDS.gap[1]);
   st.noticed = false;
   S.stats.inspections = (S.stats.inspections || 0) + 1;
+  if (result === 'Excellent') { S.stats.excellent = (S.stats.excellent || 0) + 1; if (S.stats.excellent >= 2) awardMedal('favourite'); }
   events.push({ text: `Star Inspector: ${result} (standards ${score}).${money > 0 ? ` Reward £${money}.` : money < 0 ? ` Fine £${-money}.` : ''}` });
   postMail({ role: 'Manager', subject: `Star Inspector report: ${result}`, body: `${text} Standards on the day: ${score} out of 100.`, kind: 'inspection', urgent: result === 'Failed' });
   return out;

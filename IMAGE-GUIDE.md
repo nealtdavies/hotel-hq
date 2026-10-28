@@ -354,3 +354,15 @@ Square or landscape plated-food photos work best, shot from above or at 45 degre
 | assets/menu/fruit-salad.jpg | Tropical fruit salad | Photorealistic plated tropical fruit salad (mango, pineapple and passion fruit), restaurant presentation, natural light, shallow depth of field, no text. |
 | assets/menu/lemonade.jpg | Fresh lemonade | Photorealistic plated fresh lemonade (squeezed to order), restaurant presentation, natural light, shallow depth of field, no text. |
 | assets/menu/coffee.jpg | Coffee | Photorealistic plated coffee (espresso, latte or cappuccino), restaurant presentation, natural light, shallow depth of field, no text. |
+
+## Crisis pictures (5 images, optional)
+
+Each multi-day crisis can have one wide picture, shown at the top of its card on the Crisis page and in the pop-up when it begins. If a file is missing, nothing shows, so these can be added whenever they are ready. Same style as the scenario pictures: wide 16:9, subject in the middle. Nothing in any of them should show anyone hurt or frightened.
+
+| File | Crisis | Prompt |
+|---|---|---|
+| assets/scenes/crisis-pipe.jpg | Burst pipe | Photorealistic hotel corridor with water streaming from a burst ceiling pipe, wet carpet, buckets catching the drips, a yellow wet-floor sign, a maintenance worker with a wrench looking calm, bright natural light |
+| assets/scenes/crisis-power.jpg | Power cut | Photorealistic hotel lobby during a power cut at dusk, reception desk lit by candles and torches, a few guests holding torches and smiling, warm glow, windows showing a blue evening sky |
+| assets/scenes/crisis-mice.jpg | Pest scare in the kitchen | Photorealistic spotless hotel kitchen with a tiny house mouse peeking out from behind a sack of flour, a chef with a surprised look pointing at it, steel worktops, a closed sign hanging on the kitchen door |
+| assets/scenes/crisis-roof.jpg | Storm damage | Photorealistic top-floor hotel corridor with rain dripping through the ceiling into buckets, storm clouds and rain visible through a window, a maintenance worker holding a tarpaulin and a ladder |
+| assets/scenes/crisis-gossip.jpg | Bad reviews online | Photorealistic hotel reception desk, a receptionist reading a laptop with a worried face, a phone on the desk showing a row of stars with no readable text, guests chatting quietly in the lobby behind |

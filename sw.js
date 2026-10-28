@@ -6,7 +6,7 @@
    The block between the BUILD markers is written by `node tools/make-sw.js`. Run it after changing any game file, so the version changes
    and old copies are replaced. `node tools/make-sw.js --check` says whether it is up to date. */
 /* BUILD:START */
-const VERSION = 'a8f73637adf4';
+const VERSION = '15fb1a6cce52';
 const PRECACHE = [
   "./",
   "index.html",
@@ -50,6 +50,7 @@ const PRECACHE = [
   "js/ui-career.js",
   "js/ui-contractors.js",
   "js/ui-crisis.js",
+  "js/ui-crisisgames.js",
   "js/ui-dashboard.js",
   "js/ui-events.js",
   "js/ui-fun.js",

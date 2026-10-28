@@ -1,7 +1,7 @@
 'use strict';
 
 /* ================= UI state & helpers ================= */
-const ui = { roomFilter: 'all', view: 'dashboard', staffTab: 'shift', bookingTab: 'rooms', eventTab: 'plan', mailTab: 'inbox', mailSel: null, mailDiscount: false, lastUnreadKeys: null, bkFilter: 'all', calType: null, modal: null, photo: null, autoInc: false, pendingImport: null };
+const ui = { game: null, roomFilter: 'all', view: 'dashboard', staffTab: 'shift', bookingTab: 'rooms', eventTab: 'plan', mailTab: 'inbox', mailSel: null, mailDiscount: false, lastUnreadKeys: null, bkFilter: 'all', calType: null, modal: null, photo: null, autoInc: false, pendingImport: null };
 const missingImgs = new Set();   // image files that failed to load (so we show the placeholder straight away)
 
 const ICONS = {
@@ -40,6 +40,7 @@ function commit() { writeSave(); render(); }
 
 /* ---------- Images with graceful fallbacks ---------- */
 function fallbackHtml(d) {
+  if (d.fb === 'none') return '';   // an optional picture: nothing shows when it is missing
   if (d.fb === 'avatar') return `<div class="av-fb ${esc(d.size || '')}">${esc(d.ini || '')}</div>`;
   if (d.fb === 'scene') return `<div class="scene-fb">${esc(d.label || '')}<small>${esc(d.sub || '')}</small></div>`;
   return `<div class="photo ph-fb"><span>${esc(d.label || '')}</span></div>`;
@@ -47,7 +48,7 @@ function fallbackHtml(d) {
 function imgHtml(src, d) {
   if (src && d.alt2 && missingImgs.has(src)) { src = d.alt2; d = Object.assign({}, d, { alt2: null }); }   // preferred picture missing: try the next one
   if (!src || missingImgs.has(src)) return fallbackHtml(d);
-  const cls = d.fb === 'avatar' ? `av ${d.size || ''}` : d.fb === 'scene' ? '' : 'photo';
+  const cls = d.fb === 'avatar' ? `av ${d.size || ''}` : d.fb === 'scene' ? '' : d.fb === 'none' ? 'crisis-pic' : 'photo';
   return `<img class="${cls}" src="${esc(src)}" alt="${esc(d.alt || '')}" data-fb="${esc(d.fb)}" data-size="${esc(d.size || '')}" data-ini="${esc(d.ini || '')}" data-label="${esc(d.label || '')}" data-sub="${esc(d.sub || '')}" data-alt2="${esc(d.alt2 || '')}">`;
 }
 function avatar(p, size) {
@@ -468,7 +469,7 @@ const navShown = () => NAV.filter(n => !n[3] || n[3]());
 const VIEWS = { rooms: viewRooms, guests: viewGuests, incidents: viewIncidents, tasks: viewTasks, maintenance: viewMaintenance, expansion: viewExpansion, finance: viewFinance, settings: viewSettings };
 
 function navBadges() {
-  return { crisis: [S.crises.length, 'red'], tasks: [S.jobs.length, ''], inbox: [unreadMail().length, unreadMail().some(m => m.urgent) ? 'red' : ''], events: [S.eventRequests.length, ''], guests: [S.enquiries.length, ''], bookings: [arrivalsDue().length, ''], incidents: [S.incidents.length, 'red'],
+  return { crisis: [S.crises.length + (S.warning ? 1 : 0), S.crises.length ? 'red' : ''], tasks: [S.jobs.length, ''], inbox: [unreadMail().length, unreadMail().some(m => m.urgent) ? 'red' : ''], events: [S.eventRequests.length, ''], guests: [S.enquiries.length, ''], bookings: [arrivalsDue().length, ''], incidents: [S.incidents.length, 'red'],
     maintenance: [S.assets.filter(a => a.broken || a.cond < 40).length, S.assets.some(a => a.broken) ? 'red' : ''],
     phone: [phoneOpen().length, phoneRinging() ? 'red' : ''] };
 }
@@ -506,7 +507,7 @@ function render() {
         <span class="spacer"></span>
         <div class="stat"><b class="${S.money < 0 ? 'neg' : ''}">${money(S.money)}</b><small>Cash</small></div>
         <div class="stat hide-sm"><b>${rating().toFixed(1)} <span class="stars">${stars(Math.round(rating()))}</span></b><small>Rating</small></div>
-        ${S.crises.length && isOnline() ? `<button class="btn ghost hide-sm crisis-btn" data-act="nav" data-view="crisis">Crisis</button>` : ''}${S.incidents.length && isOnline() ? `<button class="btn ghost hide-sm" data-act="nav" data-view="incidents">${S.incidents.length} incident${S.incidents.length > 1 ? 's' : ''}</button>` : ''}
+        ${(S.crises.length || S.warning) && isOnline() ? `<button class="btn ghost hide-sm crisis-btn" data-act="nav" data-view="crisis">${S.crises.length ? 'Crisis' : 'Warning'}</button>` : ''}${S.incidents.length && isOnline() ? `<button class="btn ghost hide-sm" data-act="nav" data-view="incidents">${S.incidents.length} incident${S.incidents.length > 1 ? 's' : ''}</button>` : ''}
         ${mgmtButton()}</header>
       <main class="content">${mgmtBanner()}${VIEWS[ui.view]()}</main>
     </div></div>${modalHtml()}`;

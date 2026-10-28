@@ -131,3 +131,12 @@ bottom-right | feral-cats | Photorealistic family hotel suite overrun by about t
 
 ## Grid 22 (OPTIONAL)
 top-left | frenchie-break-in | Photorealistic luxury hotel suite overrun by about eight escaped French bulldogs getting into silly trouble: one stuck behind the sofa, one with its head in a waste bin, others bouncing on the bed, cushions and papers everywhere, terrace doors open to the ocean, bright daylight
+
+## Crisis pictures (5, optional)
+
+Save each as assets/scenes/crisis-<name>.jpg. Same style prefix as above. Full table in IMAGE-GUIDE.md.
+crisis-pipe | Photorealistic hotel corridor with water streaming from a burst ceiling pipe, wet carpet, buckets catching the drips, a yellow wet-floor sign, a maintenance worker with a wrench looking calm
+crisis-power | Photorealistic hotel lobby during a power cut at dusk, reception desk lit by candles and torches, guests holding torches and smiling, warm glow
+crisis-mice | Photorealistic spotless hotel kitchen with a tiny house mouse peeking from behind a sack of flour, a chef with a surprised look pointing at it, a closed sign on the kitchen door
+crisis-roof | Photorealistic top-floor hotel corridor with rain dripping through the ceiling into buckets, storm clouds through a window, a maintenance worker holding a tarpaulin and a ladder
+crisis-gossip | Photorealistic hotel reception desk, a receptionist reading a laptop with a worried face, a phone on the desk showing a row of stars with no readable text, guests chatting quietly behind

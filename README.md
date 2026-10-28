@@ -75,11 +75,27 @@ Tabs: **Plan**, **Planned**, **Requests**, **Results** and **Menu**.
 Most problems are still settled with one choice. The big ones are **crises**: they last for days and cannot be fixed by just sending someone.
 
 - **Two meters.** *Trouble* starts at 40 and grows every night (9 to 14 a night, depending on the crisis); at 100 the crisis blows up. *Progress* is built with actions; at 100 it is solved. Even a perfect day cannot finish one, so it always takes at least two days of decisions.
-- **Actions cost something real.** Each of the four actions in a crisis costs cash, jobs from the people on duty (the same three-jobs-a-day each person has for ordinary work, so a crisis competes with cleaning and requests), or both. Each can be done once a day. The risky ones show their chance of working, which goes up 8 points for each skill star above three, and the screen shows the chance for each person you could send. A failure makes things worse.
+- **Actions cost something real.** Each crisis has four actions plus a written notice. They cost cash, jobs from the people on duty (the same three-jobs-a-day each person has for ordinary work, so a crisis competes with cleaning and requests), or both. Each can be done once a day.
+- **Skill games instead of dice.** Most actions are a short game, and how well she plays decides the result (`js/ui-crisisgames.js`, with the set-up and judging in `js/engine-crises.js`):
+  - *Timing:* stop the moving marker in the green zone (valve, generator, tarpaulin). The middle is a perfect hit.
+  - *Tapping:* tap every patch before the time runs out (drying rooms, sweeping crumbs).
+  - *Word game:* pick the best of three replies (the plumber, the power company, pest control, the roofer, replying to reviews, asking for a review). Reading is the skill.
+  - *Order:* put the steps in the right order (the barbecue).
+  A **perfect** result gives a quarter more progress and relief. Anyone can instead **leave it to chance**, with the chance shown (and 8 points better for each skill star above three), so the games never block anyone.
+- **Experience and traits matter.** More skill stars make the timing zone bigger, give more time for tapping, rule out the worst answer in a word game and show the first step in an order game. A trait that suits the game helps further: *Calm under pressure* (timing), *Meticulous* (tapping), *Great with guests* and *Friendly and warm* (word games), *Very organised* (order). *Hard-working* adds progress, and *Quick learner* earns double credit. The person chosen shows their trait on the button.
+- **Heroes.** Whoever did the most becomes the **hero of the hotel**: one more skill star (and £8 a day more in wages, as for any experienced hire), a mood boost, a certificate and a place on the heroes list.
+- **Your own words.** Every crisis offers a written notice for the guests. Nothing written is marked; a longer one helps a little more.
+- **People talk.** Two guests and a member of the team say what they think, and it gets angrier as Trouble rises.
 - **Real effects while it lasts.** Depending on the crisis: rooms are put out of service (they get repair jobs as usual), the restaurant closes, guests get more upset each night, and reviews are marked down by a star until an honest message is posted.
 - **Five crises, all mishaps and nothing that hurts anyone:** Burst pipe, Power cut, Pest scare in the kitchen (needs a restaurant), Storm damage (only on a wet day) and Bad reviews online. They start by chance from day 8, one at a time and at least six days apart, and an urgent incident that is ignored can grow into one.
 - **Handled well** it pays a thank-you bonus (about £300 to £400 at the start, more in bigger hotels), puts any damage right, cheers the guests and lifts standards. **Left to blow up** it costs a fine of about £350 to £500, upsets every guest, lowers standards, brings a 2-star review and leaves any damaged rooms to be repaired.
 - **Away from the game.** If Management is offline or the game is closed for days, a crisis keeps growing and can blow up (see "Management online and offline").
+
+**Preparing ahead.** Six crises in ten begin with a **warning** a day or two before (storm forecast, knocking pipes, crumbs in the storeroom, an angry guest). Each warning offers two preparations. Do both and the crisis never happens (a thank-you bonus and a medal); do one and it is milder (less Trouble to start with, one room fewer); do none and it hits in full. On the Crisis page, five **safeguards** can be bought once (£400 to £900): each makes that kind of crisis much rarer, starts it with less Trouble, and takes the sting out (for example the generator keeps the kitchen open in a power cut).
+
+**Medals and perks.** Fifteen medals are earned for good play (solving a first crisis, a perfect game, stopping a crisis before it starts, making a hero, solving each kind, buying every safeguard, writing five notices, two Excellent inspections, and more). Each pays £100. Collecting them unlocks perks: 3 medals make the timing zones bigger, 6 make everything bought in a crisis 10% cheaper, 9 make thank-you bonuses 20% bigger and 12 slow Trouble by 2 a night.
+
+**Pictures.** Each crisis can have one optional wide picture (`assets/scenes/crisis-pipe.jpg`, `-power`, `-mice`, `-roof`, `-gossip`). The prompts are in `IMAGE-GUIDE.md`. With no picture, nothing shows.
 
 **Hotel standards** is a score out of 100 shown on the Dashboard: cleanliness (rooms clean and in service), equipment (how worn or broken it is) and guest care (complaints and requests waiting). It moves a little each evening towards what those three say. A high score makes crises rarer (half as often at 80 or more) and a low one commoner (more than twice as often under 45).
 
@@ -281,7 +297,7 @@ After editing run `node tests/simulate.js`. It checks every scenario's structure
 | `js/engine-career.js` | Career ranks and certificates, and the morning briefing (no DOM access) |
 | `js/engine-mgmt.js` | Management online and offline, the held-back morning, and the real-clock catch-up (no DOM access) |
 | `js/engine-staffing.js`, `js/ui-staffing.js` | Spotting a stretched team, the advice to recruit, and the guide to choosing who to hire (the engine file has no DOM access) |
-| `js/engine-crises.js`, `js/engine-standards.js`, `js/ui-crisis.js` | Multi-day crises and their actions, the standards score and the Star Inspector, and their screens (the engine files have no DOM access) |
+| `js/engine-crises.js`, `js/engine-standards.js`, `js/ui-crisis.js`, `js/ui-crisisgames.js` | Multi-day crises, their skill games, warnings, safeguards, medals and heroes, the standards score and the Star Inspector, and their screens (the engine files have no DOM access) |
 | `js/engine-wishes.js` | What guests asked for (sea view, ground floor, vegetarian food, a dish) and the complaints when it is not delivered (no DOM access) |
 | `js/engine-coach.js` | First steps, awards, the day headline and tips (no DOM access) |
 | `js/engine-team.js` | Shifts, the in-day clock, activity, mood, rota editing, hiring (no DOM access) |

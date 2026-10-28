@@ -6,8 +6,8 @@
    notes, replies, the diary, settings) can be changed while the hotel is paused. */
 const LIVE_ACTIONS = new Set(['assign', 'assignAll', 'declineRequest', 'acceptEnquiry', 'declineEnquiry', 'acceptAll', 'customiseEnquiry', 'checkInRoom', 'addGuest',
   'arriveCheckIn', 'arriveAll', 'resolve', 'chooseOption', 'service', 'getQuotes', 'hireFirm', 'advanceTime', 'mailAssign', 'mailAssignAll', 'mailBest', 'mailDiscount',
-  'callOpen', 'msgOpen', 'phoneDecline', 'acceptEventReq', 'declineEventReq', 'kidsEnrol', 'crisisAct']);
-const LIVE_FORMS = new Set(['booking', 'dinner', 'call', 'message', 'addEventRes']);
+  'callOpen', 'msgOpen', 'phoneDecline', 'acceptEventReq', 'declineEventReq', 'kidsEnrol', 'crisisAct', 'crisisPlay', 'prepAct']);
+const LIVE_FORMS = new Set(['booking', 'dinner', 'call', 'message', 'addEventRes', 'crisisNotice']);
 
 function offlineBlocked() {
   if (!S || isOnline()) return false;

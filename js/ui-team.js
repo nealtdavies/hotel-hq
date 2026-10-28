@@ -40,7 +40,7 @@ function tabShift() {
 function tabPeople() {
   if (!S.staff.length) return '<div class="card empty">You have no staff. Open Recruitment.</div>';
   return `<div class="grid g3">${S.staff.map(s => { const st = rotaStats(s); return `<div class="card stack">
-      <div class="row">${avatar(s, 'lg')}<div style="min-width:0"><h3>${esc(s.name)}</h3><div>${esc(s.role)}</div><div class="muted small">${esc(s.trait)}</div></div></div>
+      <div class="row">${avatar(s, 'lg')}<div style="min-width:0"><h3>${esc(s.name)}</h3><div>${esc(s.role)}</div><div class="muted small">${esc(s.trait)}${s.heroes ? ` <span class="chip warn">Hero${s.heroes > 1 ? ' x' + s.heroes : ''}</span>` : ''}</div></div></div>
       <div class="row small"><span>Skill</span><span class="stars">${stars(s.skill)}</span><span class="muted" style="margin-left:10px">Reliability</span><span class="stars">${stars(s.reliability)}</span></div>
       <div><div class="row small"><span>Mood</span><span class="chip ${staffMoodClass(s.mood)} right">${moodWordStaff(s.mood)} ${s.mood}</span></div><div class="bar ${staffMoodClass(s.mood) || 'good'}" style="margin-top:4px"><i style="width:${s.mood}%"></i></div>
         <div class="muted small" style="margin-top:4px">${s.streak ? `${s.streak} day${s.streak > 1 ? 's' : ''} worked in a row.` : 'Rested.'} ${s.streak >= 6 ? 'Needs a day off.' : ''}</div></div>
