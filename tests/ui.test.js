@@ -1098,6 +1098,45 @@ const assert = (c, m) => { if (!c) { failed++; console.error('FAIL:', m); } else
     assert((await page.locator('#toasts').innerText()).includes('Management is offline') && await page.evaluate(t => S.crises[0].trouble === t && !S.crises[0].acted.phone && ui.game === null, trouble0), 'crisis actions and games are locked while Management is offline');
     await page.evaluate(() => { S.crises = []; ui.view = 'dashboard'; render(); });
     await goLive(page);
+    // artwork behind the games, served by the test: scenes, a set of pictures that follow the marker, and transparent patches
+    const tinyPng = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
+    const gamesDir = path.join(__dirname, '..', 'assets', 'games'), madeDir = !fs.existsSync(gamesDir), tmpArt = [];
+    const putArt = f => { fs.mkdirSync(gamesDir, { recursive: true }); fs.writeFileSync(path.join(gamesDir, f), tinyPng); tmpArt.push(f); };
+    const dropArt = f => { try { fs.unlinkSync(path.join(gamesDir, f)); } catch (e) { /* already gone */ } };
+    const cleanArt = () => { tmpArt.forEach(dropArt); if (madeDir) { try { fs.rmdirSync(gamesDir); } catch (e) { /* not empty or gone */ } } };
+    process.on('exit', cleanArt);   // the stand-in pictures never stay behind, even if a check fails
+    ['pipe-valve-bg.jpg', 'pipe-valve-f1.png', 'pipe-valve-f2.png', 'pipe-valve-f3.png', 'pipe-valve-f4.png', 'pipe-valve-f5.png', 'pipe-dry-bg.jpg', 'patch-wet.png', 'pipe-plumber-bg.jpg'].forEach(putArt);
+    await page.evaluate(() => { ui.modal = null; S.crises = []; S.crisisLast = -99; S.warning = null; S.rooms.forEach(r => { r.damaged = false; }); S.staff.forEach(x => { x.used = 0; x.trait = 'Always on time'; }); startCrisis('pipe', false); S.crises[0].seen = true; actions.nav({ view: 'crisis' }); });
+    await page.click('.crisis-card .pick[data-key="valve"] >> nth=0'); await page.waitForTimeout(400);
+    assert(await page.locator('.modal .gstage .gbg').count() === 1 && await page.locator('.modal .gframe').count() === 5 && await page.locator('.modal .gframe.on').count() === 1, 'a timing game draws its scene and only the pictures that exist, one showing at a time');
+    assert(await page.evaluate(() => ui.game.spec.center === 0.5), 'with pictures, the middle of the sweep is the target');
+    await page.evaluate(() => { ui.game.frozen = true; ui.game.pos = 0; });
+    await page.waitForTimeout(150);
+    const first = await page.evaluate(() => [...document.querySelectorAll('.gframe')].findIndex(f => f.classList.contains('on')));
+    await page.evaluate(() => { ui.game.pos = 1; });
+    await page.waitForTimeout(150);
+    const last = await page.evaluate(() => [...document.querySelectorAll('.gframe')].findIndex(f => f.classList.contains('on')));
+    await page.evaluate(() => { ui.game.pos = 0.5; });
+    await page.waitForTimeout(150);
+    const mid = await page.evaluate(() => [...document.querySelectorAll('.gframe')].findIndex(f => f.classList.contains('on')));
+    assert(first === 0 && last === 4 && mid === 2, 'the picture follows the marker, from the first to the last, with the middle one in the middle');
+    await page.click('.modal [data-act="tgStop"]'); await page.waitForTimeout(250);
+    assert(await page.evaluate(() => ui.game === null && S.crises[0].acted.valve === S.day), 'and the game still finishes as usual');
+    await page.evaluate(() => { S.staff.forEach(x => { x.used = 0; }); render(); });
+    await page.click('.crisis-card .pick[data-key="dry"] >> nth=0'); await page.waitForTimeout(400);
+    assert(await page.locator('.modal .tapstage .patch.art .patchimg').count() === 6 && await page.locator('.modal .tapstage .gbg').count() === 1, 'a tapping game puts transparent patches on its scene');
+    for (let i = 0; i < 6; i++) await page.click('.modal .tapstage .patch >> nth=0');
+    await page.waitForTimeout(250);
+    assert(await page.evaluate(() => ui.game === null && S.crises[0].acted.dry === S.day), 'tapping them finishes the game');
+    await page.click('.crisis-card [data-act="crisisPlay"][data-key="plumber"]'); await page.waitForTimeout(400);
+    assert(await page.locator('.modal .gstage.banner .gbg').count() === 1, 'a word game shows its picture as a banner');
+    await page.click('.modal [data-act="crisisCancel"]'); await page.waitForTimeout(150);
+    await page.evaluate(() => { S.crises = []; S.crisisLast = -99; S.rooms.forEach(r => { r.damaged = false; }); S.staff.forEach(x => { x.used = 0; }); startCrisis('mice', false); S.crises[0].seen = true; actions.nav({ view: 'crisis' }); });
+    await page.click('.crisis-card .pick[data-key="clean"] >> nth=0'); await page.waitForTimeout(400);   // no pictures were made for this one
+    assert(await page.locator('.modal .gstage').count() === 0 && await page.locator('.modal .patches .patch').count() === 6 && await page.locator('.modal .patchimg').count() === 0, 'with no artwork the games draw plainly, exactly as before');
+    await page.click('.modal [data-act="crisisCancel"]'); await page.waitForTimeout(150);
+    cleanArt();
+    await page.evaluate(() => { S.crises = []; S.rooms.forEach(r => { r.damaged = false; }); render(); });
     // the odds on an ordinary repair
     await page.evaluate(() => {
       ui.modal = null; if (!S.assets.some(a => a.key === 'boiler')) S.assets.push({ key: 'boiler', cond: 20, broken: false });

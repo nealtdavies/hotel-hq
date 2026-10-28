@@ -95,6 +95,8 @@ Most problems are still settled with one choice. The big ones are **crises**: th
 
 **Medals and perks.** Fifteen medals are earned for good play (solving a first crisis, a perfect game, stopping a crisis before it starts, making a hero, solving each kind, buying every safeguard, writing five notices, two Excellent inspections, and more). Each pays £100. Collecting them unlocks perks: 3 medals make the timing zones bigger, 6 make everything bought in a crisis 10% cheaper, 9 make thank-you bonuses 20% bigger and 12 slow Trouble by 2 a night.
 
+**Artwork for the games.** Every game can optionally have a scene behind it, the timing games a set of seven pictures that swap as the marker moves (the middle one is the "just right" pose, and the green zone is centred on it, so the valve wheel really turns), and the tapping games a transparent picture for each wet patch or pile of crumbs. All of it goes in `assets/games/` and is found automatically when a game opens; anything missing is simply not drawn. The exact filenames, sizes and prompts are in `GAME-ART.md`.
+
 **Pictures.** Each crisis can have one optional wide picture (`assets/scenes/crisis-pipe.jpg`, `-power`, `-mice`, `-roof`, `-gossip`). The prompts are in `IMAGE-GUIDE.md`. With no picture, nothing shows.
 
 **Hotel standards** is a score out of 100 shown on the Dashboard: cleanliness (rooms clean and in service), equipment (how worn or broken it is) and guest care (complaints and requests waiting). It moves a little each evening towards what those three say. A high score makes crises rarer (half as often at 80 or more) and a low one commoner (more than twice as often under 45).

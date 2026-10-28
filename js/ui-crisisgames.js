@@ -7,17 +7,37 @@
    this file only draws the games and passes what she did to crisisJudge. ui.game holds the game being played. */
 
 const GAME_HELP = { timing: 'Press Stop when the moving marker is inside the green zone. The middle is a perfect hit.', tap: 'Tap every patch before the time runs out.', choice: 'Read each answer, then pick the best one.', order: 'Tap the steps in the order they should happen.' };
+/* Optional artwork, in assets/games (see GAME-ART.md). Each game may have a scene behind it (<crisis>-<action>-bg.jpg), the moving timing games
+   a set of pictures that swap as the marker moves (-f1.png, -f2.png and so on, the middle one is the "just right" pose), and the tapping games
+   a transparent picture for each patch (patch-wet.png, patch-crumb.png). Whatever is missing is simply not drawn, so every game works with no
+   artwork at all. What exists is found out just before the game opens. */
+const GAME_ART = { 'pipe-valve': { frames: 7 }, 'power-generator': { frames: 7 }, 'roof-tarp': { frames: 7 }, 'pipe-dry': { patch: 'wet' }, 'roof-dry': { patch: 'wet' }, 'mice-clean': { patch: 'crumb' } };
+const PATCH_SLOTS = [[16, 30], [48, 22], [80, 34], [26, 66], [58, 72], [84, 64]];   // where the patches sit on a scene, as percentages
+const artSrc = (key, file) => `assets/games/${key}-${file}`;
+const loadsOk = src => new Promise(res => { const i = new Image(), t = setTimeout(() => res(false), 1500); i.onload = () => { clearTimeout(t); res(true); }; i.onerror = () => { clearTimeout(t); res(false); }; i.src = src; });
+async function probeArt(key) {
+  const meta = GAME_ART[key] || {}, files = Array.from({ length: meta.frames || 0 }, (_, i) => artSrc(key, `f${i + 1}.png`)), patchSrc = meta.patch ? `assets/games/patch-${meta.patch}.png` : null;
+  const [bg, patch, ...found] = await Promise.all([loadsOk(artSrc(key, 'bg.jpg')), patchSrc ? loadsOk(patchSrc) : false, ...files.map(loadsOk)]);
+  return { key, bg: bg ? artSrc(key, 'bg.jpg') : null, patch: patch ? patchSrc : null, frames: files.filter((_, i) => found[i]) };
+}
+const artImg = (src, cls) => `<img class="${cls}" src="${esc(src)}" alt="" draggable="false">`;
 const reducedMotion = () => !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 
-actions.crisisPlay = d => {
+actions.crisisPlay = async d => {
   const c = crisisById(Number(d.id)), def = c && CRISES[c.key], a = def && crisisActionsOf(def).find(x => x.key === d.key);
   if (!a || !a.game) return toast('That crisis has ended.', 'bad');
   const st = crisisActionState(c, a);
   if (!st.ok) return toast(st.reason, 'bad');
   const staff = a.role ? st.staff.map(x => x.s).find(s => s.id === Number(d.staff)) : null;
   if (a.role && !staff) return toast('Choose who will do it.', 'bad');
-  ui.game = { id: c.id, key: a.key, staffId: staff ? staff.id : undefined, label: a.label, spec: crisisGameSpec(a, staff), odds: crisisOdds(a, staff), who: staff ? staff.id : null, pos: 0, frozen: false, tapped: [], left: 0, picked: null, next: 0, mistakes: 0, done: [] };
-  ui.game.left = ui.game.spec.seconds || 0;
+  if (ui.probing) return;
+  ui.probing = true;
+  const art = await probeArt(`${c.key}-${a.key}`);   // which pictures exist for this game
+  ui.probing = false;
+  if (!crisisById(c.id)) return;
+  const spec = crisisGameSpec(a, staff);
+  if (spec.type === 'timing' && art.frames.length >= 2) spec.center = 0.5;   // the middle picture is the "just right" pose
+  ui.game = { id: c.id, key: a.key, staffId: staff ? staff.id : undefined, label: a.label, spec, odds: crisisOdds(a, staff), who: staff ? staff.id : null, art, pos: 0, frozen: false, tapped: [], left: spec.seconds || 0, picked: null, next: 0, mistakes: 0, done: [] };
   openModal({ type: 'crisisGame' });
 };
 /* The game is over: hand the result to the engine. */
@@ -36,25 +56,28 @@ actions.crisisSkip = () => {   // leave it to chance
 actions.crisisCancel = () => { ui.game = null; closeModal(); };
 
 /* ---------- Drawing ---------- */
+const frameIndex = (g, n) => Math.round(g.pos * (n - 1));
 function gameBody(g) {
-  const sp = g.spec;
-  if (sp.type === 'timing') return `<div class="tg-bar" aria-hidden="true"><div class="tg-zone" style="left:${((sp.center - sp.zone / 2) * 100).toFixed(2)}%;width:${(sp.zone * 100).toFixed(2)}%"></div><div class="tg-mark" id="tgMark" style="left:${(g.pos * 100).toFixed(2)}%"></div></div>
+  const sp = g.spec, art = g.art || { bg: null, patch: null, frames: [] };
+  const banner = art.bg ? `<div class="gstage banner">${artImg(art.bg, 'gbg')}</div>` : '';
+  if (sp.type === 'timing') return `${art.frames.length ? `<div class="gstage">${art.bg ? artImg(art.bg, 'gbg') : ''}${art.frames.map((src, i) => artImg(src, `gframe${i === frameIndex(g, art.frames.length) ? ' on' : ''}`)).join('')}</div>` : banner}<div class="tg-bar" aria-hidden="true"><div class="tg-zone" style="left:${((sp.center - sp.zone / 2) * 100).toFixed(2)}%;width:${(sp.zone * 100).toFixed(2)}%"></div><div class="tg-mark" id="tgMark" style="left:${(g.pos * 100).toFixed(2)}%"></div></div>
     <div class="actions" style="justify-content:center"><button class="btn primary big" data-act="tgStop" data-autofocus>Stop!</button></div>`;
   if (sp.type === 'tap') {
-    const slots = Array.from({ length: sp.patches }, (_, i) => i);
-    return `<div class="row small"><span id="tapTime"><b>${g.left.toFixed(1)}</b> seconds left</span><span class="muted right">${g.tapped.length} of ${sp.patches}</span></div><div class="bar" style="margin:6px 0"><i id="tapBar" style="width:${Math.max(0, g.left / sp.seconds * 100)}%"></i></div>
-      <div class="patches">${slots.map(i => g.tapped.includes(i) ? '<span class="patch gone"></span>' : `<button class="patch" data-act="tapPatch" data-i="${i}" aria-label="Patch ${i + 1}" style="--j:${(i * 37) % 13}"></button>`).join('')}</div>`;
+    const slots = Array.from({ length: sp.patches }, (_, i) => i), inner = i => art.patch ? artImg(art.patch, 'patchimg') : '';
+    const head = `<div class="row small"><span id="tapTime"><b>${g.left.toFixed(1)}</b> seconds left</span><span class="muted right">${g.tapped.length} of ${sp.patches}</span></div><div class="bar" style="margin:6px 0"><i id="tapBar" style="width:${Math.max(0, g.left / sp.seconds * 100)}%"></i></div>`;
+    if (art.bg) return `${head}<div class="gstage tapstage">${artImg(art.bg, 'gbg')}${slots.map(i => g.tapped.includes(i) ? '' : `<button class="patch ${art.patch ? 'art' : ''}" data-act="tapPatch" data-i="${i}" aria-label="Patch ${i + 1}" style="left:${PATCH_SLOTS[i % PATCH_SLOTS.length][0]}%;top:${PATCH_SLOTS[i % PATCH_SLOTS.length][1]}%">${inner(i)}</button>`).join('')}</div>`;
+    return `${head}<div class="patches">${slots.map(i => g.tapped.includes(i) ? '<span class="patch gone"></span>' : `<button class="patch ${art.patch ? 'art' : ''}" data-act="tapPatch" data-i="${i}" aria-label="Patch ${i + 1}" style="--j:${(i * 37) % 13}">${inner(i)}</button>`).join('')}</div>`;
   }
   if (sp.type === 'choice') {
     if (g.picked !== null) {
       const o = sp.options[g.picked], msg = o.score === 2 ? 'The best answer!' : o.score === 1 ? 'That works, but it could have been better.' : 'That did not help.';
-      return `<div class="stack">${sp.options.map((x, i) => `<div class="opt ${i === g.picked ? 'picked' : ''}" style="cursor:default"><span class="t">${esc(x.t)}${i === g.picked ? `<span class="why">${msg}</span>` : ''}</span></div>`).join('')}</div>
+      return `${banner}<div class="stack">${sp.options.map((x, i) => `<div class="opt ${i === g.picked ? 'picked' : ''}" style="cursor:default"><span class="t">${esc(x.t)}${i === g.picked ? `<span class="why">${msg}</span>` : ''}</span></div>`).join('')}</div>
         <div class="actions"><button class="btn primary big" data-act="gameDone" data-autofocus>Continue</button></div>`;
     }
-    return `${sp.hint ? `<div class="small muted" style="margin-bottom:6px">Your experience rules out the worst answer.</div>` : ''}<div class="stack">${sp.options.map((x, i) => `<button class="opt" data-act="gameChoice" data-i="${i}"><span class="t">${esc(x.t)}</span></button>`).join('')}</div>`;
+    return `${banner}${sp.hint ? `<div class="small muted" style="margin-bottom:6px">Your experience rules out the worst answer.</div>` : ''}<div class="stack">${sp.options.map((x, i) => `<button class="opt" data-act="gameChoice" data-i="${i}"><span class="t">${esc(x.t)}</span></button>`).join('')}</div>`;
   }
   if (sp.type === 'order') {
-    return `${sp.hint ? `<div class="small muted" style="margin-bottom:6px">Your experience shows you the first step: <b>${esc(sp.steps.find(s => s.i === 0).t)}</b></div>` : ''}<div class="stack">${sp.steps.map(s => g.done.includes(s.i) ? `<div class="opt picked" style="cursor:default"><span class="t">${g.done.indexOf(s.i) + 1}. ${esc(s.t)}</span></div>` : `<button class="opt" data-act="gameStep" data-i="${s.i}"><span class="t">${esc(s.t)}</span></button>`).join('')}</div>
+    return `${banner}${sp.hint ? `<div class="small muted" style="margin-bottom:6px">Your experience shows you the first step: <b>${esc(sp.steps.find(s => s.i === 0).t)}</b></div>` : ''}<div class="stack">${sp.steps.map(s => g.done.includes(s.i) ? `<div class="opt picked" style="cursor:default"><span class="t">${g.done.indexOf(s.i) + 1}. ${esc(s.t)}</span></div>` : `<button class="opt" data-act="gameStep" data-i="${s.i}"><span class="t">${esc(s.t)}</span></button>`).join('')}</div>
       <div class="small muted" style="margin-top:6px">Wrong taps so far: <b>${g.mistakes}</b></div>`;
   }
   return '';
@@ -103,6 +126,8 @@ function gameLoops() {
       if (!cur.frozen) { const x = ((now - t0) / (cur.spec.sweepMs * slow)) % 2; cur.pos = x <= 1 ? x : 2 - x; }
       const el = document.getElementById('tgMark');
       if (el) el.style.left = (cur.pos * 100).toFixed(2) + '%';
+      const fr = document.querySelectorAll('.gframe');   // the picture follows the marker
+      if (fr.length) { const idx = frameIndex(cur, fr.length); fr.forEach((f, i) => f.classList.toggle('on', i === idx)); }
       gameFrame = requestAnimationFrame(step);
     };
     gameFrame = requestAnimationFrame(step);
