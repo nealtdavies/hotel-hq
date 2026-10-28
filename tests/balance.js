@@ -5,7 +5,7 @@ const vm = require('vm'), fs = require('fs'), path = require('path');
 const root = path.join(__dirname, '..', 'js');
 const sb = { console: { log() {}, error() {} }, Math, JSON, Date, Number, Object, Array, String, Set, Map, Error };
 vm.createContext(sb);
-for (const f of ['storage.js', 'data.js', 'names-data.js', 'names.js', 'scenarios.js', 'scenarios-guests.js', 'scenarios-business.js', 'scenarios-extra.js', 'scenarios-fun.js', 'engine.js', 'engine-extra.js', 'engine-contractors.js', 'engine-bookings.js', 'engine-events.js', 'engine-mail.js', 'engine-season.js', 'engine-challenges.js', 'engine-coach.js', 'engine-bank.js', 'engine-milestones.js', 'engine-fun.js', 'engine-phone.js', 'engine-guestbook.js', 'engine-career.js', 'engine-wishes.js', 'engine-mgmt.js', 'engine-staffing.js', 'engine-team.js', 'engine-dashboard.js']) vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), sb);
+for (const f of ['storage.js', 'data.js', 'names-data.js', 'names.js', 'scenarios.js', 'scenarios-guests.js', 'scenarios-business.js', 'scenarios-extra.js', 'scenarios-fun.js', 'engine.js', 'engine-extra.js', 'engine-contractors.js', 'engine-bookings.js', 'engine-events.js', 'engine-mail.js', 'engine-season.js', 'engine-challenges.js', 'engine-coach.js', 'engine-bank.js', 'engine-milestones.js', 'engine-fun.js', 'engine-phone.js', 'engine-guestbook.js', 'engine-career.js', 'engine-wishes.js', 'engine-mgmt.js', 'engine-staffing.js', 'engine-standards.js', 'engine-crises.js', 'engine-team.js', 'engine-dashboard.js']) vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), sb);
 const run = c => vm.runInContext(c, sb);
 const GAMES = Number(process.argv[2]) || 60, DAYS = Number(process.argv[3]) || 120;
 
@@ -30,10 +30,26 @@ function funDay() {
     for (const a of S.assets) if (a.key.startsWith('arcade-') && !a.broken && a.cond < 55) serviceAsset(a.key, 'house');
   })()`);
 }
+/* A crisis, dealt with: each action is taken with probability `care`, the biggest first, by the person with the best chance, keeping some cash back. */
+function crisisDay(care) {
+  run(`(function () { const care = ${care};
+    for (const c of [...S.crises]) {
+      const acts = CRISES[c.key].actions.slice().sort((a, b) => (b.fix || 0) - (a.fix || 0));
+      for (const a of acts) {
+        if (!S.crises.includes(c) || Math.random() >= care) continue;
+        const st = crisisActionState(c, a);
+        if (!st.ok || (st.cost > 0 && S.money - st.cost < 1500)) continue;
+        const who = st.staff.length ? st.staff.slice().sort((x, y) => y.odds - x.odds)[0].s.id : undefined;
+        doCrisisAction(c.id, a.key, who);
+      }
+    }
+  })()`);
+}
 function botDay(style) {
   if (style === 'idle') return;
-  if (style === 'casual') return sloppyDay(0.6);
-  if (style === 'distracted') return sloppyDay(0.25);
+  if (style === 'casual') { crisisDay(0.5); return sloppyDay(0.6); }
+  if (style === 'distracted') { crisisDay(0.2); return sloppyDay(0.25); }
+  crisisDay(1);
   run(`acceptAllEnquiries()`);
   run(`autoAssignAll()`);
   if (style === 'fun') funDay();
@@ -74,7 +90,7 @@ function play(style) {
     if (!reached[t]) reached[t] = day + 1;
     if (run('S.money') <= run('BANKRUPT_AT')) return { day, bankrupt: true, reached, lifelines: run('S.lifelines') };
   }
-  return { extras: extrasIncome, features: run('Object.keys(S.features).length'), day: DAYS, bankrupt: false, lifelines: run('S.lifelines'), money: run('S.money'), rating: run('rating()'), rooms: run('S.rooms.length'), staff: run('S.staff.length'), tier: run('S.tier'), reached };
+  return { crises: run('S.stats.crises || 0'), solved: run('S.stats.crisesSolved || 0'), extras: extrasIncome, features: run('Object.keys(S.features).length'), day: DAYS, bankrupt: false, lifelines: run('S.lifelines'), money: run('S.money'), rating: run('rating()'), rooms: run('S.rooms.length'), staff: run('S.staff.length'), tier: run('S.tier'), reached };
 }
 const median = a => { const s = a.slice().sort((x, y) => x - y); return s.length ? s[Math.floor(s.length / 2)] : null; };
 for (const style of (process.argv[4] ? process.argv[4].split(',') : ['idle', 'distracted', 'casual', 'attentive', 'careful', 'fun', 'grower'])) {
@@ -83,6 +99,6 @@ for (const style of (process.argv[4] ? process.argv[4].split(',') : ['idle', 'di
   const tierDays = t => { const d = res.filter(r => r.reached[t]).map(r => r.reached[t]); return d.length ? `T${t}: ${d.length}/${GAMES} reached, median day ${median(d)}` : `T${t}: none`; };
   const rescued = res.filter(r => r.lifelines > 0).length;
   console.log(`${style.padEnd(10)} bankrupt ${bk.length}/${GAMES}${bk.length ? ' (median day ' + median(bk.map(r => r.day)) + ')' : ''}, used a bank lifeline ${rescued}/${GAMES}` +
-    (ok.length ? `  extras net £${median(ok.map(r => r.extras))} (${median(ok.map(r => r.features))} opened)  survivors: median cash £${median(ok.map(r => r.money))}, rooms ${median(ok.map(r => r.rooms))}, staff ${median(ok.map(r => r.staff))}, rating ${median(ok.map(r => r.rating)).toFixed(1)}` : ''));
+    (ok.length ? `  crises ${median(ok.map(r => r.crises))} (${median(ok.map(r => r.solved))} solved)  extras net £${median(ok.map(r => r.extras))} (${median(ok.map(r => r.features))} opened)  survivors: median cash £${median(ok.map(r => r.money))}, rooms ${median(ok.map(r => r.rooms))}, staff ${median(ok.map(r => r.staff))}, rating ${median(ok.map(r => r.rating)).toFixed(1)}` : ''));
   console.log('           ' + [2, 3, 4].map(tierDays).join(' | '));
 }

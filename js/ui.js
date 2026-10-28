@@ -367,7 +367,7 @@ function incidentModal(m) {
     return `<button class="opt" data-act="chooseOption" data-inc="${inc.id}" data-idx="${i}" ${os.reason ? 'disabled' : ''}>
       <span class="t"><b>${esc(os.label)}</b>${os.hint ? `<small>${esc(os.hint)}</small>` : ''}${os.reason ? `<span class="why">${esc(os.reason)}</span>` : ''}</span>
       ${os.sts.map(st => `<span title="${esc(st.name)}">${avatar(st, 'sm')}</span>`).join('')}
-      ${os.cost ? `<span class="chip warn">${money(os.cost)}</span>` : ''}</button>`;
+      ${os.odds !== null && os.odds !== undefined ? `<span class="chip">${Math.round(os.odds * 100)}% chance</span>` : ''}${os.cost ? `<span class="chip warn">${money(os.cost)}</span>` : ''}</button>`;
   }).join('');
   return `<div class="scene">${incScene(inc)}<div class="tags"><span class="tag">${esc(s.cat)}</span><span class="tag ${esc(s.sev)}">${esc(s.sev)}</span></div></div>
     <div class="inc-body"><h2>${esc(scenarioTitle(inc))}</h2>
@@ -396,6 +396,7 @@ function modalHtml() {
       ${(r.challenges || []).map(ch => `<div class="alert good" style="margin-bottom:12px"><b>${ch.streak ? 'Streak bonus' : ch.weekly ? 'Weekly challenge done' : 'Challenge done'}:</b> ${esc(ch.name)}, +${money(ch.reward)}</div>`).join('')}
       ${(r.awards || []).map(n => `<div class="alert good" style="margin-bottom:12px"><b>Award unlocked:</b> ${esc(n)}</div>`).join('')}
       ${(r.milestones || []).map(g => `<div class="alert good" style="margin-bottom:12px"><b>Goal reached: ${esc(g.name)}.</b>${g.unlock ? ` You have unlocked the ${esc(FEATURES[g.unlock].name)}, free.` : ''}</div>`).join('')}
+      ${r.inspection ? inspectionBlock(r.inspection) : ''}
       ${(r.promotions || []).map(p => `<div class="alert good" style="margin-bottom:12px"><b>Promoted to ${esc(p.rank)}!</b> Your certificate is in the Goals list on the Dashboard.</div>`).join('')}
       ${r.levelUp ? `<div class="alert good" style="margin-bottom:12px"><b>Level up!</b> You are about to become a ${esc(r.levelUp)}.</div>` : ''}
       <div class="row"><span class="chip good">Income ${money(r.income)}</span><span class="chip bad">Costs ${money(r.expenses)}</span><span class="chip ${r.income - r.expenses >= 0 ? 'good' : 'bad'}">Profit ${money(r.income - r.expenses)}</span></div>
@@ -467,7 +468,7 @@ const navShown = () => NAV.filter(n => !n[3] || n[3]());
 const VIEWS = { rooms: viewRooms, guests: viewGuests, incidents: viewIncidents, tasks: viewTasks, maintenance: viewMaintenance, expansion: viewExpansion, finance: viewFinance, settings: viewSettings };
 
 function navBadges() {
-  return { tasks: [S.jobs.length, ''], inbox: [unreadMail().length, unreadMail().some(m => m.urgent) ? 'red' : ''], events: [S.eventRequests.length, ''], guests: [S.enquiries.length, ''], bookings: [arrivalsDue().length, ''], incidents: [S.incidents.length, 'red'],
+  return { crisis: [S.crises.length, 'red'], tasks: [S.jobs.length, ''], inbox: [unreadMail().length, unreadMail().some(m => m.urgent) ? 'red' : ''], events: [S.eventRequests.length, ''], guests: [S.enquiries.length, ''], bookings: [arrivalsDue().length, ''], incidents: [S.incidents.length, 'red'],
     maintenance: [S.assets.filter(a => a.broken || a.cond < 40).length, S.assets.some(a => a.broken) ? 'red' : ''],
     phone: [phoneOpen().length, phoneRinging() ? 'red' : ''] };
 }
@@ -505,7 +506,7 @@ function render() {
         <span class="spacer"></span>
         <div class="stat"><b class="${S.money < 0 ? 'neg' : ''}">${money(S.money)}</b><small>Cash</small></div>
         <div class="stat hide-sm"><b>${rating().toFixed(1)} <span class="stars">${stars(Math.round(rating()))}</span></b><small>Rating</small></div>
-        ${S.incidents.length && isOnline() ? `<button class="btn ghost hide-sm" data-act="nav" data-view="incidents">${S.incidents.length} incident${S.incidents.length > 1 ? 's' : ''}</button>` : ''}
+        ${S.crises.length && isOnline() ? `<button class="btn ghost hide-sm crisis-btn" data-act="nav" data-view="crisis">Crisis</button>` : ''}${S.incidents.length && isOnline() ? `<button class="btn ghost hide-sm" data-act="nav" data-view="incidents">${S.incidents.length} incident${S.incidents.length > 1 ? 's' : ''}</button>` : ''}
         ${mgmtButton()}</header>
       <main class="content">${mgmtBanner()}${VIEWS[ui.view]()}</main>
     </div></div>${modalHtml()}`;
@@ -522,11 +523,13 @@ function closeModal() {
   ui.modal = null; ui.photo = null;
   if (was === 'levelup') { S.tierSeen = S.tier; writeSave(); }
   if (was === 'welcome' && ui.pendingAway) return showAway(ui.pendingAway);
+  if (was === 'away' && announceCrisis()) return;
   if ((was === 'report' || was === 'levelup') && ui.autoInc && !(S.tierSeen < S.tier)) return openNextIncident();
   render();
 }
 function openNextIncident() {
   if (S && !isOnline()) { ui.modal = null; render(); return; }   // nothing happens while Management is offline
+  if (announceCrisis()) return;   // a crisis that began overnight comes first
   pruneIncidents();
   const inc = S.incidents[0];
   ui.modal = inc ? { type: 'incident', id: inc.id } : null;

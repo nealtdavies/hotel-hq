@@ -470,3 +470,8 @@ table.calendar th,table.calendar td{padding:3px 2px}
 .setup-dots i{width:8px;height:8px;border-radius:50%;background:var(--line)}
 .setup-dots i.done{background:#9aa3ad}
 .setup-dots i.on{background:var(--accent);width:22px;border-radius:4px}
+
+/* Crises and standards */
+.crisis-card{border:2px solid var(--bad);background:linear-gradient(0deg,var(--surface),var(--surface))}
+.card.dim{opacity:.7}
+.crisis-btn{border-color:var(--bad);color:var(--bad)}

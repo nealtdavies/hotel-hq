@@ -147,7 +147,7 @@ function viewDashboard() {
     <div class="card kpi"><div class="v">${rating().toFixed(1)} <span class="stars" style="font-size:1rem">${stars(Math.round(rating()))}</span></div><div class="l">Guest rating</div></div>
     <div class="card kpi"><div class="v">${onDutyNow().length}<span class="muted" style="font-size:1.1rem"> / ${S.staff.length}</span></div><div class="l">Staff on duty</div></div>
   </div>
-  ${milestoneCard()}${briefingCard()}${tipBanner()}${startCard()}
+  ${crisisBanner()}${milestoneCard()}${briefingCard()}${standardsCard()}${tipBanner()}${startCard()}
   <div class="duo">${attentionCard()}${challengeCard()}</div>
   <div class="duo">${roomsOverviewCard()}${cashFlowCard()}</div>
   <div class="duo">${gp ? goalCard(gp, true) : '<div class="card"><h3>Grand Resort</h3><div class="alert good" style="margin-top:10px">You have reached the top level. Keep guests happy and the hotel thriving.</div></div>'}${maintenanceCard()}</div>

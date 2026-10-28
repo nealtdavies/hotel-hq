@@ -50,6 +50,8 @@ const assert = (c, m) => { if (!c) { failed++; console.error('FAIL:', m); } else
         if (await enabled.count()) await enabled.first().click(); else await page.click('[data-act="decideLater"]');
       } else if (await page.locator('[data-act="continueIncident"]').count()) {
         await page.click('[data-act="continueIncident"]');
+      } else if (await page.locator('.modal .chip:text-is("Crisis")').count()) {   // a crisis announced when the hotel opens
+        await page.click('.modal [data-act="closeModal"]');
       } else break;
     }
   }
@@ -553,6 +555,7 @@ const assert = (c, m) => { if (!c) { failed++; console.error('FAIL:', m); } else
           const enabled = page.locator('.modal.wide .opt:not([disabled])');
           if (await enabled.count()) await enabled.first().click(); else await page.click('[data-act="decideLater"]');
         } else if (await page.locator('[data-act="continueIncident"]').count()) await page.click('[data-act="continueIncident"]');
+        else if (await page.locator('.modal .chip:text-is("Crisis")').count()) await page.click('.modal [data-act="closeModal"]');
         else break;
       }
     }
@@ -992,6 +995,64 @@ const assert = (c, m) => { if (!c) { failed++; console.error('FAIL:', m); } else
     }
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.evaluate(() => { S.jobs = []; S.candidates = []; render(); });
+
+    // ---- crises, standards and the inspector ----
+    const lucky = () => page.evaluate(() => { window.__rand = Math.random; Math.random = () => 0.001; });
+    const normal = () => page.evaluate(() => { if (window.__rand) Math.random = window.__rand; });
+    await page.evaluate(() => {
+      ui.modal = null; S.incidents = []; S.jobs = []; S.crises = []; S.crisisLast = -99; S.money = Math.max(S.money, 50000);
+      S.rooms.forEach(r => { if (r.guestId) leaveGuest(guestById(r.guestId), r); r.dirty = false; r.damaged = false; });
+      S.staff.forEach(x => { x.rota = Array(14).fill(true); x.used = 0; x.sickDays = 0; });
+      S.standards.next = S.day + 30; S.standards.noticed = false;
+      startCrisis('pipe', false); actions.nav({ view: 'dashboard' });
+    });
+    assert(await page.locator('.crisis-card:has-text("Crisis: Burst pipe") .bar.bad') .count() === 1 && await page.locator('.crisis-card:has-text("Progress")').count() === 1, 'a crisis shows on the Dashboard with its Trouble and Progress');
+    assert(await page.locator('.crisis-btn').count() === 1 && await page.locator('.nav[data-view="crisis"], .more-hidden .nav[data-view="crisis"]').count() >= 1, 'it adds a Crisis button and a menu entry');
+    assert(await page.locator('.card:has(h3:has-text("Hotel standards")) .bar').count() === 4 && (await page.locator('.card:has(h3:has-text("Hotel standards"))').innerText()).includes('Star Inspector visits in'), 'the Dashboard shows the standards score, its three parts and the inspector countdown');
+    await page.click('.crisis-card [data-act="nav"][data-view="crisis"]');
+    assert(await page.locator('.pagehead h2:has-text("Crisis")').count() === 1 && await page.locator('.crisis-card .card.stack').count() === 4, 'the Crisis page lists four things she can do');
+    assert(await page.locator('.crisis-card .pick[data-key="valve"]').count() >= 1 && /\d+%/.test(await page.locator('.crisis-card .pick[data-key="valve"] >> nth=0').innerText()), 'actions needing people show who can do it, with the chance for each');
+    assert(await page.locator('.crisis-card [data-act="crisisAct"][data-key="plumber"]:has-text("90% chance")').count() === 1 && await page.locator('.crisis-card .chip:has-text("£350")').count() === 1, 'other actions show their cost and chance');
+    const cashC = await page.evaluate(() => S.money); await lucky();
+    await page.click('.crisis-card [data-act="crisisAct"][data-key="plumber"]'); await normal();
+    assert(await page.evaluate(c => S.money === c - 350 && S.crises[0].fix === 35 && S.crises[0].trouble === 20, cashC) && (await page.locator('#toasts').innerText()).includes('plumber fixed the pipe'), 'a successful action spends the money, adds progress and cuts trouble');
+    assert(await page.locator('.crisis-card [data-act="crisisAct"][data-key="plumber"]').count() === 0 && (await page.locator('.crisis-card').innerText()).includes('Done today'), 'each action can be done once a day');
+    // the announcement when a crisis begins overnight
+    await page.evaluate(() => { S.crises[0].seen = false; announceCrisis(); });
+    assert(await page.locator('.modal h2:has-text("Burst pipe")').count() === 1 && await page.locator('.modal [data-act="nav"][data-view="crisis"]').count() === 1, 'a new crisis is announced with a pop-up');
+    await page.evaluate(() => closeModal());
+    // solving it
+    await page.evaluate(() => { S.crises[0].fix = 90; ui.view = 'crisis'; render(); });
+    await lucky(); await page.click('.crisis-card .pick[data-key="valve"] >> nth=0'); await normal();
+    assert(await page.locator('.modal:has-text("solved")').count() === 1 && (await page.locator('.modal').innerText()).includes('Thank-you bonus') && await page.evaluate(() => S.crises.length === 0), 'finishing a crisis pays a bonus and says so');
+    await page.evaluate(() => closeModal());
+    assert(await page.locator('.crisis-btn').count() === 0 && await page.locator('.crisis-card').count() === 0 && (await page.locator('.content').innerText()).includes('Nothing is wrong right now'), 'and the crisis is gone');
+    // the odds on an ordinary repair
+    await page.evaluate(() => {
+      ui.modal = null; if (!S.assets.some(a => a.key === 'boiler')) S.assets.push({ key: 'boiler', cond: 20, broken: false });
+      S.assets.find(a => a.key === 'boiler').broken = true; S.incidents = []; const inc = pushIncident(SCEN['boiler-breakdown'], { assetKey: 'boiler' }); openModal({ type: 'incident', id: inc.id });
+    });
+    assert(await page.locator('.opt:has-text("repair it") .chip:has-text("% chance")').count() === 1, 'repairing it in-house shows the chance it will work');
+    await page.evaluate(() => { S.incidents = []; closeModal(); });
+    // the inspector, in the day report
+    await page.evaluate(() => { ui.modal = null; S.incidents = []; S.standards.next = S.day; S.standards.score = 95; S.guests.forEach(g => { g.left = Math.max(g.left, 3); }); actions.endDay(); });
+    await page.waitForTimeout(400);
+    assert((await page.locator('.modal').innerText()).includes('Star Inspector: Excellent'), 'the inspector\'s verdict is in the day report');
+    await page.evaluate(() => closeModal());
+    // crisis actions are live: locked while Management is offline
+    await page.evaluate(() => { S.crises = []; S.crisisLast = -99; startCrisis('power', false); S.crises[0].seen = true; actions.nav({ view: 'crisis' }); });
+    const trouble0 = await page.evaluate(() => S.crises[0].trouble);
+    await page.click('.crisis-card [data-act="crisisAct"][data-key="phone"]');
+    assert((await page.locator('#toasts').innerText()).includes('Management is offline') && await page.evaluate(t => S.crises[0].trouble === t && !S.crises[0].acted.phone, trouble0), 'crisis actions are locked while Management is offline');
+    await page.evaluate(() => { S.crises = []; ui.view = 'dashboard'; render(); });
+    await goLive(page);
+    for (const [w, h] of [[390, 844], [820, 1180]]) {
+      await page.setViewportSize({ width: w, height: h });
+      await page.evaluate(() => { S.crises = []; S.crisisLast = -99; startCrisis('mice', false); S.crises[0].seen = true; });
+      for (const v of ['dashboard', 'crisis']) { await page.evaluate(vw => { ui.view = vw; render(); window.scrollTo(0, 0); }, v); assert(!(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)), `no sideways scroll on ${v} with a crisis at ${w} wide`); }
+    }
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.evaluate(() => { S.crises = []; S.rooms.forEach(r => { r.damaged = false; }); render(); });
 
     // ---- the children's menu ----
     await page.evaluate(() => { ui.modal = null; S.unlocked.push('restaurant'); ui.view = 'events'; ui.eventTab = 'menu'; render(); });

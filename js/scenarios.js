@@ -9,7 +9,7 @@
      wx      : only on days whose weather is one of these ('sunny', 'cloudy', 'rain', 'storm'); seasons: only in these seasons
      init    : (c) => data stored with the incident (amounts etc., read as c.d / {d.key})
      text    : string | string[] (variants) | (c) => string
-     options : [{ label, hint, cost, staff, when, whenText, run(c, A, st, st2) }]
+     options : [{ label, hint, cost, staff, when, whenText, odds(c, st), run(c, A, st, st2) }]   (odds is optional: the chance shown on the button)
                or stages: [{ prompt, when, options }] for multi-step decisions
      ignore  : (c, A) => consequence if the manager does nothing
    Tokens usable in text: {guest} {first} {room} {staff} {sfirst} {asset} {s} {s2} {d.key}
@@ -45,6 +45,7 @@ function breakdown(o) {
         {
           label: 'Get {s} in to repair it', staff: 'Maintenance', cost: c => Math.round(c.def.repair * 0.6),
           hint: 'Parts only. A more skilled engineer is more likely to fix it first time.',
+          odds: (c, st) => Math.min(1, 0.55 + 0.1 * st.skill),
           run: (c, A, st) => {
             if (A.roll(0.55 + 0.1 * st.skill)) { A.fixAsset(c.asset.key); return o.fixed || '{s} fixed it and everything is working again.'; }
             A.wear(c.asset.key, -10);

@@ -133,6 +133,8 @@ function migrate(d) {
   startMilestones(d);
   ensureFun(d);
   if (!d.mgmt || typeof d.mgmt !== 'object') startMgmt(d, true);
+  ensureCrises(d);
+  ensureStandards(d);
   if (typeof d.morningPending !== 'boolean') d.morningPending = false;
   if (!d.phone || typeof d.phone !== 'object' || !Array.isArray(d.phone.calls)) d.phone = newPhoneState();
   else {   // saves from the first phone desk: fill in anything missing
@@ -277,6 +279,8 @@ function newGame(hotel, owner, opts) {
     incidents: [], incidentLog: [], cooldown: {}, bookings: [], menu: [], diningLast: null, works: [], firms: [], namesUsed: [], clock: DAY_START, timeline: [], blocks: [], dinners: [], events: [], eventRequests: [], eventLog: [], mail: { items: [], read: {}, handled: [] }, autoBook: false, lifelines: 0, seed: Math.floor(Math.random() * 2147483647) + 1, weatherSet: {}, challenges: newChallengeState(), earned: 0, features: {}, milestones: { done: 0 }, visit: { date: null, streak: 0, best: 0 }, phone: newPhoneState(), regulars: [], diary: [], career: { rank: 0, certs: [] }, tally: {}, wtally: {}, tour: { step: 0, done: true }, firsts: {}, awards: {}, stats: { jobs: 0, events: 0, weddings: 0, fiveStar: 0, remembered: 0 }
   };
   startMgmt(S, true);
+  ensureCrises(S);
+  ensureStandards(S);
   S.firms = newFirmRecords();
   S.menu = defaultMenu();
   // 24 rooms: 16 garden-view Standard rooms on floors 1-2 and 8 sea-view rooms on floor 3
@@ -438,6 +442,7 @@ function staffCovered(role, day) {
 }
 function facilityStatus(f, day) {
   if (day === undefined) day = S.day;
+  if (crisisClosed(f.key)) return { open: false, why: 'closed during a crisis' };
   if (f.asset && (assetByKey(f.asset) || {}).broken) return { open: false, why: `${ASSET_DEFS[f.asset].name} broken` };
   if (f.role && !staffCovered(f.role, day)) return { open: false, why: `no ${f.role.toLowerCase()}` };
   return { open: true, why: '' };
@@ -631,7 +636,8 @@ function optionState(inc, i) {
   else if (o.when && !o.when(c)) reason = o.whenText || 'Not possible right now';
   const lab = typeof o.label === 'function' ? o.label(c) : o.label;
   const hint = typeof o.hint === 'function' ? o.hint(c) : (o.hint || '');
-  return { label: fill(lab, c, sts[0], sts[1]), hint: fill(hint, c, sts[0], sts[1]), cost, sts, reason };
+  const odds = o.odds && sts[0] ? o.odds(c, sts[0]) : null;   // the chance of success, when the option says what it is
+  return { label: fill(lab, c, sts[0], sts[1]), hint: fill(hint, c, sts[0], sts[1]), cost, sts, reason, odds };
 }
 
 /* Applies one choice. Returns null if blocked, {done:false} if another step follows, or the final outcome. */
@@ -671,6 +677,8 @@ function ignoreIncident(inc) {
   const c = ctxOf(inc), A = makeAPI(c);
   try { if (c.s.ignore) c.s.ignore(c, A); else if (c.guest) A.mood(c.guest, -20); }
   catch (e) { console.error('Scenario ignore error', inc.sid, e); }
+  const grown = escalateIncident(inc);   // an urgent problem left alone may grow into a crisis
+  if (grown) A.lines.push(grown);
   S.incidentLog.push({ day: S.day, title: scenarioTitle(inc), choice: 'Ignored', result: A.lines.map(l => l.t).join('; ') });
   return A.lines;
 }
@@ -718,6 +726,8 @@ function generateDay() {
   markArrivals();
   rollAssetFailures();
   rollIncidents();
+  rollCrises();
+  inspectionNotice();
   sellEventTickets();
   makeEventRequests();
   phoneNewDay();
@@ -782,6 +792,11 @@ function runEndDay(opts) {
   // 2d. The extras: arcade, Kids Club, shop and excursions
   runFun(events);
 
+  // 2e. Crises run on, the standards score moves, and the inspector may call
+  runCrises(events);
+  updateStandards();
+  const inspection = runInspection(events);
+
   // 3. Guests: storm out, pay for the night, or check out
   for (const g of [...S.guests]) {
     const room = roomById(g.roomId);
@@ -801,7 +816,7 @@ function runEndDay(opts) {
     g.left--;
     g.happiness = clamp(g.happiness + 2, 0, 100);
     if (g.left <= 0) {
-      const sc = clamp(Math.ceil(g.happiness / 20), 1, 5);
+      const sc = clamp(Math.ceil(g.happiness / 20) - crisisReviewHit(), 1, 5);   // a crisis that is spreading drags reviews down
       addReview(g.name, sc);
       events.push({ text: `${g.name} checked out of ${room.name} and left ${sc}★.` });
       leaveGuest(g, room);
@@ -836,6 +851,7 @@ function runEndDay(opts) {
   if (won.length) report.awards = won.map(a => a.name);
   const cw = checkChallenges(Object.assign({}, dusk, { profit: income - expenses }));
   if (cw.length) report.challenges = cw;
+  if (inspection) report.inspection = inspection;
   report.headline = dayHeadline(income - expenses);
   const reached = checkMilestones();
   if (reached.length) report.milestones = reached;

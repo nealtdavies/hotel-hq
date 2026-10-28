@@ -70,6 +70,21 @@ Tabs: **Plan**, **Planned**, **Requests**, **Results** and **Menu**.
 - **On the night** each event needs a suitable person rostered (a chef, or a receptionist for excursions and karaoke) or it is cancelled and refunded with a bad review. Outdoor events depend on the weather on the night: rain halves the crowd (those who stay home are refunded) and a storm calls a public event off with full refunds (a wedding or party carries on indoors like a wet day). The evening pays door sales and extra spend, charges the costs and leaves a review. Restaurant-venue events close the restaurant to normal diners and dinner tables.
 - **Menu:** the menu builder (add, edit, delete and switch off dishes, with your own photos). Every evening guests dine from it; a bigger menu brings more diners, quality and a fair price make guests happier. The **children's menu** (spaghetti bolognese, nuggets, pizza, macaroni cheese, ice cream, doughnuts, cola, orange fizz, milkshake and apple juice) is added with one button; children order only from dishes marked as children's dishes, grown-ups never do, and a children's dish is fairly priced at about 55% of the grown-up price for its course. Any dish of your own can be marked as a children's dish. The restaurant still needs at least one grown-up main course.
 
+### Crises, standards and inspections
+
+Most problems are still settled with one choice. The big ones are **crises**: they last for days and cannot be fixed by just sending someone.
+
+- **Two meters.** *Trouble* starts at 40 and grows every night (9 to 14 a night, depending on the crisis); at 100 the crisis blows up. *Progress* is built with actions; at 100 it is solved. Even a perfect day cannot finish one, so it always takes at least two days of decisions.
+- **Actions cost something real.** Each of the four actions in a crisis costs cash, jobs from the people on duty (the same three-jobs-a-day each person has for ordinary work, so a crisis competes with cleaning and requests), or both. Each can be done once a day. The risky ones show their chance of working, which goes up 8 points for each skill star above three, and the screen shows the chance for each person you could send. A failure makes things worse.
+- **Real effects while it lasts.** Depending on the crisis: rooms are put out of service (they get repair jobs as usual), the restaurant closes, guests get more upset each night, and reviews are marked down by a star until an honest message is posted.
+- **Five crises, all mishaps and nothing that hurts anyone:** Burst pipe, Power cut, Pest scare in the kitchen (needs a restaurant), Storm damage (only on a wet day) and Bad reviews online. They start by chance from day 8, one at a time and at least six days apart, and an urgent incident that is ignored can grow into one.
+- **Handled well** it pays a thank-you bonus (about £300 to £400 at the start, more in bigger hotels), puts any damage right, cheers the guests and lifts standards. **Left to blow up** it costs a fine of about £350 to £500, upsets every guest, lowers standards, brings a 2-star review and leaves any damaged rooms to be repaired.
+- **Away from the game.** If Management is offline or the game is closed for days, a crisis keeps growing and can blow up (see "Management online and offline").
+
+**Hotel standards** is a score out of 100 shown on the Dashboard: cleanliness (rooms clean and in service), equipment (how worn or broken it is) and guest care (complaints and requests waiting). It moves a little each evening towards what those three say. A high score makes crises rarer (half as often at 80 or more) and a low one commoner (more than twice as often under 45).
+
+The **Star Inspector** visits every 12 to 20 days, with two days' warning in the Inbox and the Dashboard. The score on the evening of the visit gives Excellent (80 or more: a reward and happier guests), Good (60 or more: a small reward), Needs work (45 or more: a warning, no fine) or Failed (a fine and upset guests). The code is `js/engine-crises.js` and `js/engine-standards.js` (no DOM access) and `js/ui-crisis.js`. The in-house repair of a broken machine now also shows its chance of working.
+
 ### Seasons, weather and prices
 
 - **Seasons.** A year is 112 days of four 28-day seasons, starting in spring. People ask to stay more in summer (125% of a normal day), a little less in autumn (95%) and much less in winter (75%). **Festivals** (Spring Flower Festival, Summer Carnival, Harvest Fair, Winter Lights) multiply that by 1.3 to 1.6 for a few days. Everything is in `SEASONS` and `FESTIVALS` in `js/engine-season.js`.
@@ -266,6 +281,7 @@ After editing run `node tests/simulate.js`. It checks every scenario's structure
 | `js/engine-career.js` | Career ranks and certificates, and the morning briefing (no DOM access) |
 | `js/engine-mgmt.js` | Management online and offline, the held-back morning, and the real-clock catch-up (no DOM access) |
 | `js/engine-staffing.js`, `js/ui-staffing.js` | Spotting a stretched team, the advice to recruit, and the guide to choosing who to hire (the engine file has no DOM access) |
+| `js/engine-crises.js`, `js/engine-standards.js`, `js/ui-crisis.js` | Multi-day crises and their actions, the standards score and the Star Inspector, and their screens (the engine files have no DOM access) |
 | `js/engine-wishes.js` | What guests asked for (sea view, ground floor, vegetarian food, a dish) and the complaints when it is not delivered (no DOM access) |
 | `js/engine-coach.js` | First steps, awards, the day headline and tips (no DOM access) |
 | `js/engine-team.js` | Shifts, the in-day clock, activity, mood, rota editing, hiring (no DOM access) |
