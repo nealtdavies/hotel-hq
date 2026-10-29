@@ -8,8 +8,8 @@
 
 const GAME_HELP = { timing: 'Press Stop when the moving marker is inside the green zone. The middle is a perfect hit.', tap: 'Tap each patch again and again. It fades a little with every tap and is gone after about ten. Clear them all before the time runs out.', choice: 'Read each answer, then pick the best one.', order: 'Tap the steps in the order they should happen.' };
 /* Optional artwork, in assets/games (see GAME-ART.md). Each game may have a scene behind it (<crisis>-<action>-bg.jpg), the moving timing games
-   a set of pictures that swap as the marker moves (-f1.png, -f2.png and so on, the middle one is the "just right" pose), and the tapping games
-   a transparent picture for each patch (patch-wet.png, patch-crumb.png, patch-leaf.png). Whatever is missing is simply not drawn, so every game works with no
+   a set of pictures that swap as the marker moves (-f1.webp, -f2.webp and so on, the middle one is the "just right" pose), and the tapping games
+   a transparent picture for each patch (patch-wet.webp, patch-crumb.webp, patch-leaf.webp). Whatever is missing is simply not drawn, so every game works with no
    artwork at all. What exists is found out just before the game opens. */
 const GAME_ART = { 'pipe-valve': { frames: 7 }, 'power-generator': { frames: 7 }, 'roof-tarp': { frames: 7 }, 'pipe-dry': { patch: 'wet' }, 'roof-dry': { patch: 'wet' }, 'mice-clean': { patch: 'crumb' },
   'lift-doors': { frames: 7 }, 'lock-pick': { frames: 7 }, 'pool-skim': { patch: 'leaf' } };
@@ -17,7 +17,7 @@ const PATCH_SLOTS = [[16, 30], [48, 22], [80, 34], [26, 66], [58, 72], [84, 64]]
 const artSrc = (key, file) => `assets/games/${key}-${file}`;
 const loadsOk = src => new Promise(res => { const i = new Image(), t = setTimeout(() => res(false), 1500); i.onload = () => { clearTimeout(t); res(true); }; i.onerror = () => { clearTimeout(t); res(false); }; i.src = src; });
 async function probeArt(key) {
-  const meta = GAME_ART[key] || {}, files = Array.from({ length: meta.frames || 0 }, (_, i) => artSrc(key, `f${i + 1}.png`)), patchSrc = meta.patch ? `assets/games/patch-${meta.patch}.png` : null;
+  const meta = GAME_ART[key] || {}, files = Array.from({ length: meta.frames || 0 }, (_, i) => artSrc(key, `f${i + 1}.webp`)), patchSrc = meta.patch ? `assets/games/patch-${meta.patch}.webp` : null;
   const [bg, patch, ...found] = await Promise.all([loadsOk(artSrc(key, 'bg.jpg')), patchSrc ? loadsOk(patchSrc) : false, ...files.map(loadsOk)]);
   return { key, bg: bg ? artSrc(key, 'bg.jpg') : null, patch: patch ? patchSrc : null, frames: files.filter((_, i) => found[i]) };
 }

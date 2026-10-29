@@ -1118,10 +1118,11 @@ const assert = (c, m) => { if (!c) { failed++; console.error('FAIL:', m); } else
     await goLive(page);
     // artwork behind the games, served by the test: scenes, a set of pictures that follow the marker, and transparent patches
     const tinyPng = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
-    const putArt = f => { fs.mkdirSync(gamesDir, { recursive: true }); fs.writeFileSync(path.join(gamesDir, f), tinyPng); tmpArt.push(f); };
+    const tinyWebp = Buffer.from('UklGRhoAAABXRUJQVlA4TA0AAAAvAAAAEAcQERGIiP4HAA==', 'base64');   // a real 1-pixel WebP
+    const putArt = f => { fs.mkdirSync(gamesDir, { recursive: true }); fs.writeFileSync(path.join(gamesDir, f), f.endsWith('.webp') ? tinyWebp : tinyPng); tmpArt.push(f); };
     const dropArt = f => { try { fs.unlinkSync(path.join(gamesDir, f)); } catch (e) { /* already gone */ } };
     const cleanArt = () => tmpArt.forEach(dropArt);
-    ['pipe-valve-bg.jpg', 'pipe-valve-f1.png', 'pipe-valve-f2.png', 'pipe-valve-f3.png', 'pipe-valve-f4.png', 'pipe-valve-f5.png', 'pipe-dry-bg.jpg', 'patch-wet.png', 'pipe-plumber-bg.jpg'].forEach(putArt);
+    ['pipe-valve-bg.jpg', 'pipe-valve-f1.webp', 'pipe-valve-f2.webp', 'pipe-valve-f3.webp', 'pipe-valve-f4.webp', 'pipe-valve-f5.webp', 'pipe-dry-bg.jpg', 'patch-wet.webp', 'pipe-plumber-bg.jpg'].forEach(putArt);
     await page.evaluate(() => { ui.modal = null; S.crises = []; S.crisisLast = -99; S.warning = null; S.rooms.forEach(r => { r.damaged = false; }); S.staff.forEach(x => { x.used = 0; x.trait = 'Always on time'; }); startCrisis('pipe', false); S.crises[0].seen = true; actions.nav({ view: 'crisis' }); });
     await page.click('.crisis-card .pick[data-key="valve"] >> nth=0'); await page.waitForTimeout(400);
     assert(await page.locator('.modal .gstage .gbg').count() === 1 && await page.locator('.modal .gframe').count() === 5 && await page.locator('.modal .gframe.on').count() === 1, 'a timing game draws its scene and only the pictures that exist, one showing at a time');

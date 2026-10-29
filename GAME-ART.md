@@ -8,17 +8,29 @@ Three kinds of picture, and what each one does:
 2. **Moving set (`<crisis>-<action>-f1.png` to `-f7.png`)**: a row of transparent PNGs laid over the scene. As the marker slides across, the game swaps from picture 1 to picture 7, so the valve wheel turns, the cord pulls, the tarpaulin spreads, the lift doors slide open, the lock pick lifts. **The middle picture (number 4) is the "just right" pose**, and the green zone on the slider is centred on it.
 3. **Patch (`patch-wet.png`, `patch-crumb.png`, `patch-leaf.png`)**: a small transparent PNG, drawn on top of the scene wherever the player has to tap.
 
+## How your pictures are prepared (nothing for you to do)
+
+Send your pictures exactly as described here: scenes as JPG or PNG, moving frames and patches as transparent PNGs, at 1200 x 800 (patches 256 x 256), named as below. Before they go into the game they are shrunk and compressed by `tools/compress-art.py`, so the game stays quick to load, even on a slow connection:
+
+| What you send | What the game stores | Typical size |
+|---|---|---|
+| Scene (`-bg.jpg` or `.png`) | JPG, 1000 pixels wide, quality 80 | 70 to 160 KB |
+| Moving frame (`-f1.png` to `-f7.png`) | WebP with transparency, 1000 pixels wide | 15 to 55 KB |
+| Patch (`patch-wet.png` etc.) | WebP with transparency | 5 to 20 KB |
+
+1000 pixels is the same width as all the other scenes, and the game never shows these pictures wider than about 520 pixels, so they stay sharp even on a high-resolution PC screen. Always send the full-size originals, never a picture that has already been compressed, because compressing twice loses quality twice. The whole set of 60 pictures comes to about 3.4 MB.
+
 ## Sizes
 
 | Kind | Size | Format | Notes |
 |---|---|---|---|
 | Scene | 1200 x 800 (3:2) | JPG, quality about 80 | Shown whole in the tapping games and the timing games with a moving set. In the word games and the timing games with no moving set it is shown as a **wide strip**, so keep the important part in the **middle third** from top to bottom. |
-| Moving set | 1200 x 800, **exactly the same size as its scene** | PNG with transparency | Fully transparent except the moving thing, drawn in the right place on the scene. Optimise each file (TinyPNG or similar) to under about 200 KB. |
+| Moving set | 1200 x 800, **exactly the same size as its scene** | PNG with transparency | Fully transparent except the moving thing, drawn in the right place on the scene. You do not need to optimise the files yourself; leave them at full quality. |
 | Patch | 256 x 256 | PNG with transparency | Drawn at about a fifth of the scene's width. Centre the patch in the square. Top-down or slightly angled so it sits flat on a floor. |
 
 Seven pictures in a moving set is the plan. If you make fewer (5 is fine) the game uses what is there and still puts the middle one in the middle, so use an **odd number**.
 
-Total size for everything below: 60 files, roughly 6 to 8 MB. They are all added to the offline pictures automatically.
+There are 60 pictures in all. Sent as full-size originals they come to about 40 MB; once prepared for the game they are about 3.4 MB. They are all added to the offline pictures automatically.
 
 ## The five moving sets
 
@@ -81,4 +93,4 @@ On a scene, patches appear at six fixed spots (as a percentage across and down):
 
 ## Adding them
 
-Put the files in `assets/games/` and tell me. I will rebuild the offline list (`node tools/make-sw.js`), check them and put them online. The code looks for each file when a game opens, and ignores any that are missing.
+Send me the files and tell me. I run `python3 tools/compress-art.py <your folder>` to prepare them, rebuild the offline list (`node tools/make-sw.js`), check them and put them online. The code looks for each file when a game opens, and ignores any that are missing.
