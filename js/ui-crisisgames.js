@@ -40,13 +40,14 @@ actions.crisisPlay = async d => {
   if (!crisisById(c.id)) return;
   const spec = crisisGameSpec(a, staff);
   if (spec.type === 'timing' && art.frames.length >= 2) spec.center = 0.5;   // the middle picture is the "just right" pose
-  ui.game = { id: c.id, key: a.key, staffId: staff ? staff.id : undefined, label: a.label, spec, odds: crisisOdds(a, staff), who: staff ? staff.id : null, art, pos: 0, frozen: false, tapped: [], hits: {}, left: spec.seconds || 0, picked: null, next: 0, mistakes: 0, done: [] };
+  ui.game = { id: c.id, key: a.key, staffId: staff ? staff.id : undefined, label: a.label, spec, odds: crisisOdds(a, staff), who: staff ? staff.id : null, art, pos: 0, frozen: false, tapped: [], hits: {}, taps: 0, left: spec.seconds || 0, picked: null, next: 0, mistakes: 0, done: [] };
   openModal({ type: 'crisisGame' });
 };
 /* The game is over: hand the result to the engine. */
-function finishCrisisGame(result) {
+function finishCrisisGame(result, extra) {
   const g = ui.game;
   if (!g) return;
+  noteGame(g.spec, result, extra);
   ui.game = null; ui.modal = null;
   crisisOutcome(doCrisisAction(g.id, g.key, g.staffId, result));
 }
@@ -98,15 +99,16 @@ MODALS.crisisGame = () => {
 };
 
 /* ---------- Playing ---------- */
-actions.tgStop = () => { const g = ui.game; if (g && g.spec.type === 'timing') finishCrisisGame(crisisJudge(g.spec, g.pos)); };
+const tapRate = g => g.taps / Math.max(0.5, g.spec.seconds - g.left);   // taps a second over the time the player actually took
+actions.tgStop = () => { const g = ui.game; if (g && g.spec.type === 'timing') finishCrisisGame(crisisJudge(g.spec, g.pos), { value: Math.abs(g.pos - g.spec.center) * g.spec.sweepMs }); };
 actions.tapPatch = d => {
   const g = ui.game, i = Number(d.i);
   if (!g || g.spec.type !== 'tap' || g.tapped.includes(i)) return;
-  g.hits[i] = (g.hits[i] || 0) + 1;
+  g.hits[i] = (g.hits[i] || 0) + 1; g.taps++;
   const el = document.querySelector(`.modal .patch[data-i="${i}"]`);   // only this patch is redrawn, so rapid tapping stays smooth
   if (g.hits[i] < g.spec.taps) { if (el) el.style.opacity = patchFade(g, i); return; }
   g.tapped.push(i);
-  if (g.tapped.length >= g.spec.patches) return finishCrisisGame(crisisJudge(g.spec, { tapped: g.tapped.length, left: g.left }));
+  if (g.tapped.length >= g.spec.patches) return finishCrisisGame(crisisJudge(g.spec, { tapped: g.tapped.length, left: g.left }), { value: tapRate(g) });
   render();
 };
 actions.gameChoice = d => { const g = ui.game; if (g && g.spec.type === 'choice' && g.picked === null) { g.picked = Number(d.i); render(); } };
@@ -147,7 +149,7 @@ function gameLoops() {
       const t = document.getElementById('tapTime'), b = document.getElementById('tapBar');
       if (t) t.innerHTML = `<b>${cur.left.toFixed(1)}</b> seconds left`;
       if (b) b.style.width = Math.max(0, cur.left / cur.spec.seconds * 100) + '%';
-      if (cur.left <= 0) { clearInterval(gameClock); gameClock = null; finishCrisisGame(crisisJudge(cur.spec, { tapped: cur.tapped.length, left: 0 })); }
+      if (cur.left <= 0) { clearInterval(gameClock); gameClock = null; finishCrisisGame(crisisJudge(cur.spec, { tapped: cur.tapped.length, left: 0 }), { value: tapRate(cur) }); }
     }, 100);
   }
 }

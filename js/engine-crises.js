@@ -12,7 +12,7 @@
    Nothing here injures anyone: these are mishaps with pipes, power, pests, weather, lifts, pools, locks and online gossip.
    S.crises is the list of live ones (at most CRISIS.maxActive). S.crisisLast is the day the last one began. */
 
-const CRISIS = { minDay: 8, maxActive: 1, cooldown: 6, baseChance: 0.07, escalate: 0.25, startTrouble: 40, resolveBonus: 8, warnChance: 0.6, warnPoints: 2, medalBonus: 100, preventBonus: 60, perfectBoost: 1.25, tapHits: 10, tapSeconds: 13 };
+const CRISIS = { minDay: 8, maxActive: 1, cooldown: 6, baseChance: 0.07, escalate: 0.25, startTrouble: 40, resolveBonus: 8, warnChance: 0.6, warnPoints: 2, medalBonus: 100, preventBonus: 60, perfectBoost: 1.25, tapHits: 10, tapSeconds: 13, timingZone: 0.14, timingMs: 1000 };
 
 const crisisById = id => S.crises.find(c => c.id === id) || null;
 const crisisClosed = key => S.crises.some(c => (c.closes || []).includes(key));
@@ -84,8 +84,7 @@ const CRISES = {
     actions: [
       { key: 'valve', label: 'Shut off the water', hint: 'Stops it getting worse. The valve is stiff, so stop the marker in the green.', role: 'Maintenance', jobs: 1, odds: 0.85, fix: 20, relief: 15, risk: 10, game: { type: 'timing', what: 'Turn the valve at just the right moment.' }, ok: 'The water is off and the flood has stopped.', bad: 'The valve was stuck fast and the water kept coming.' },
       { key: 'plumber', label: 'Call an emergency plumber', hint: 'Expensive, but they know what they are doing. What you say on the phone matters.', cost: 350, odds: 0.9, fix: 35, relief: 20, risk: 5,
-        game: GAME_CHOICE([{ prompt: 'The plumber answers. What do you tell them?', options: [{ t: 'A pipe has burst and water is coming through the ceiling of the rooms below. We have turned the water off at the valve.', score: 2 }, { t: 'Please come quickly, there is water everywhere!', score: 1 }, { t: 'Something is a bit wet. Come when you can.', score: 0 }] },
-          { prompt: 'The plumber asks you to describe the leak.', options: [{ t: 'It is coming from the pipe above the guest rooms, and the main valve is already shut.', score: 2 }, { t: 'It is a big leak, as far as I can tell.', score: 1 }, { t: 'It is just a few drips, I think.', score: 0 }] }]),
+        game: GAME_CHOICE(CRISIS_WORDS['pipe.plumber']),
         ok: 'The plumber fixed the pipe properly.', bad: 'The plumber was stuck in traffic and arrived too late to help.' },
       { key: 'dry', label: 'Dry out the rooms', hint: 'Towels, fans and elbow grease. Two jobs for housekeeping. Every wet patch takes about ten taps and fades a little with each one, so be quick.', role: 'Housekeeper', jobs: 2, odds: 0.8, fix: 20, relief: 10, risk: 8, game: { type: 'tap', patches: 6, what: 'Tap each wet patch ten times to dry it.' }, ok: 'The rooms are drying out nicely.', bad: 'The carpets are still soaking.', after: c => crisisRepair(c, 1) },
       { key: 'treat', label: 'Give guests a free treat', hint: 'Hot drinks and cake in the lounge. Cheers everyone up.', cost: 80, odds: null, fix: 0, relief: 8, ok: 'The guests enjoyed the treat and calmed down.', after: () => crisisMood(6) }
@@ -100,12 +99,11 @@ const CRISES = {
     actions: [
       { key: 'generator', label: 'Start the generator', hint: 'Needs a steady hand. Stop the marker in the green to pull the cord at the right moment.', cost: 120, role: 'Maintenance', jobs: 1, odds: 0.7, fix: 35, relief: 20, risk: 10, game: { type: 'timing', what: 'Pull the cord at just the right moment.' }, ok: 'The generator roared into life.', bad: 'It spluttered and died. It needs another go.' },
       { key: 'phone', label: 'Ring the power company', hint: 'Free, but they are very busy. Be clear and polite.', odds: 0.6, fix: 20, relief: 10, risk: 5,
-        game: GAME_CHOICE([{ prompt: 'The power company answers. What do you say?', options: [{ t: 'Hello, this is {hotel}. The whole hotel has lost power and we have guests here. Could you tell me when it will be back?', score: 2 }, { t: 'Hello? Our lights are out.', score: 1 }, { t: 'Fix our power right now!', score: 0 }] },
-          { prompt: 'They ask whether you have checked your own fuse box.', options: [{ t: 'Yes, we have, and it is fine. The whole street seems to be dark. How long will it take?', score: 2 }, { t: 'I think so. Can you just send someone?', score: 1 }, { t: 'That is not our job, that is yours.', score: 0 }] }]),
+        game: GAME_CHOICE(CRISIS_WORDS['power.phone']),
         ok: 'They promise an engineer and the power starts to come back.', bad: 'You waited in a queue and got nowhere.' },
       { key: 'candles', label: 'Hand out candles and snacks', hint: 'Housekeeping brings light and biscuits to every floor.', cost: 60, role: 'Housekeeper', jobs: 1, odds: null, fix: 0, relief: 12, ok: 'Guests are cosy and a lot happier.', after: () => crisisMood(8) },
       { key: 'barbecue', label: 'Cook dinner on the barbecue', hint: 'If it works, the restaurant can open tonight. Put the steps in the right order.', cost: 150, role: 'Chef', jobs: 1, odds: 0.75, fix: 15, relief: 8, risk: 6,
-        game: { type: 'order', variants: [{ prompt: 'Put the barbecue steps in the right order.', steps: ['Check the charcoal and light it', 'Wait until the coals glow', 'Cook the food on the grill', 'Serve it hot with a smile'] }, { prompt: 'Put the steps in the right order.', steps: ['Clean the grill', 'Light the coals', 'Cook the food until it is ready', 'Carry it safely to the tables'] }] },
+        game: { type: 'order', variants: CRISIS_ORDERS['power.barbecue'] },
         ok: 'Dinner is served by torchlight and everyone loves it.', bad: 'The barbecue would not light.', after: c => { c.closes = []; crisisMood(6); } }
     ] },
   mice: { name: 'Pest scare in the kitchen', w: 2, rooms: 0, closes: ['restaurant'], reviewHit: 1, growth: 11, mood: 3, fine: 450, reward: 350, reviewText: 'Heard there was a pest problem in the kitchen. Not good enough.', staffVoice: 'Chef',
@@ -118,8 +116,7 @@ const CRISES = {
     actions: [
       { key: 'clean', label: 'Deep-clean the kitchen', hint: 'Every cupboard and corner. Two jobs for housekeeping. Every pile takes about ten taps and shrinks a little with each one, so be quick.', role: 'Housekeeper', jobs: 2, odds: 0.85, fix: 25, relief: 12, risk: 8, game: { type: 'tap', patches: 6, what: 'Tap each pile of crumbs ten times to sweep it up.' }, ok: 'The kitchen is spotless.', bad: 'Something was missed and there are signs of a mouse again.' },
       { key: 'pest', label: 'Call pest control', hint: 'The experts. What you tell them helps them find the way in.', cost: 300, odds: 0.9, fix: 40, relief: 20, risk: 5,
-        game: GAME_CHOICE([{ prompt: 'Pest control asks what you have seen.', options: [{ t: 'A mouse near the kitchen door, and crumbs by the storeroom. We have closed the kitchen.', score: 2 }, { t: 'A mouse, I think.', score: 1 }, { t: 'Nothing really. Just have a look around.', score: 0 }] },
-          { prompt: 'They ask where the food is kept.', options: [{ t: 'In the storeroom next to the kitchen. It is locked now and we have moved the open packets.', score: 2 }, { t: 'In the kitchen somewhere.', score: 1 }, { t: 'I do not know. Ask the chef.', score: 0 }] }]),
+        game: GAME_CHOICE(CRISIS_WORDS['mice.pest']),
         ok: 'Pest control found the way in and blocked it up.', bad: 'They could not come until tomorrow.' },
       { key: 'restock', label: 'Throw out and restock the food', hint: 'Better safe than sorry.', cost: 200, odds: null, fix: 10, relief: 10, ok: 'Fresh food is in and the old stock is gone.' },
       { key: 'honest', label: 'Tell guests honestly', hint: 'An honest note on the desk. Stops the bad reviews, and guests respect it.', odds: null, fix: 5, relief: 10, ok: 'Guests appreciated being told the truth.', after: c => { c.reviewHit = 0; crisisMood(3); } }
@@ -134,8 +131,7 @@ const CRISES = {
     actions: [
       { key: 'tarp', label: 'Cover the roof with a tarpaulin', hint: 'Quick and cheap, in the wind and rain. Stop the marker in the green to throw it just right.', cost: 90, role: 'Maintenance', jobs: 1, odds: 0.8, fix: 20, relief: 20, risk: 10, game: { type: 'timing', what: 'Throw the tarpaulin over at just the right moment.' }, ok: 'The tarpaulin is tied down and the rain is kept out.', bad: 'The wind whipped the tarpaulin away.' },
       { key: 'roofer', label: 'Book a roofer', hint: 'Costly, but it fixes the roof properly. Tell them what they need to know.', cost: 450, odds: 0.9, fix: 35, relief: 20, risk: 5,
-        game: GAME_CHOICE([{ prompt: 'The roofer asks how bad the leak is.', options: [{ t: 'Tiles have blown off above two rooms and rain is coming in. We have covered it with a sheet for now.', score: 2 }, { t: 'The roof is leaking.', score: 1 }, { t: 'It is only a few drips, no rush.', score: 0 }] },
-          { prompt: 'The roofer asks if anyone can get onto the roof safely.', options: [{ t: 'Yes, there is a hatch on the top floor. Please bring your own ladder and we will keep guests clear.', score: 2 }, { t: 'I think there is a way up.', score: 1 }, { t: 'Just climb up, you will find it.', score: 0 }] }]),
+        game: GAME_CHOICE(CRISIS_WORDS['roof.roofer']),
         ok: 'The roofer replaced the tiles.', bad: 'The roofer could not get up in the weather.' },
       { key: 'dry', label: 'Dry and re-make the rooms', hint: 'Two jobs for housekeeping. Every wet patch takes about ten taps and fades a little with each one, so be quick.', role: 'Housekeeper', jobs: 2, odds: 0.8, fix: 20, relief: 10, risk: 8, game: { type: 'tap', patches: 6, what: 'Tap each wet patch ten times to dry it.' }, ok: 'The rooms are dry and fresh again.', bad: 'It is still damp in there.', after: c => crisisRepair(c, 1) },
       { key: 'move', label: 'Move guests to dry rooms', hint: 'A bit of effort, and the guests are happy to move.', odds: null, fix: 0, relief: 8, ok: 'Everyone is settled in dry rooms.', after: () => crisisMood(4) }
@@ -149,13 +145,11 @@ const CRISES = {
       staff: [['I have seen the review. We can answer it nicely.', 'I am ready to write some kind replies.'], ['More people are sharing it. We need to reply today.', 'It is spreading, and guests are asking about it.'], ['It is everywhere! We are losing guests!', 'We have to stop this before it gets worse!']] },
     actions: [
       { key: 'reply', label: 'Reply politely to your reviews', hint: 'Kind, careful replies. A skilled receptionist does this much better. Two jobs.', role: 'Receptionist', jobs: 2, odds: 0.75, fix: 25, relief: 15, risk: 8,
-        game: GAME_CHOICE([{ prompt: 'A guest has written an unkind review. Which reply is best?', options: [{ t: 'Thank you for telling us, and we are sorry we let you down. We would love to put it right, so please get in touch.', score: 2 }, { t: 'Thank you for your review.', score: 1 }, { t: 'That is not true and you are wrong.', score: 0 }] },
-          { prompt: 'Another guest says the room was noisy. How do you reply?', options: [{ t: 'We are sorry about the noise. We have spoken to the team and we would like you to come back for a quieter room.', score: 2 }, { t: 'Sorry about that.', score: 1 }, { t: 'Other guests did not complain.', score: 0 }] }]),
+        game: GAME_CHOICE(CRISIS_WORDS['gossip.reply']),
         ok: 'The replies were kind and people noticed.', bad: 'The replies came across badly.' },
       { key: 'tea', label: 'Invite unhappy guests to a free tea', hint: 'Turn grumbles into smiles.', cost: 120, odds: null, fix: 10, relief: 10, ok: 'The tea party went down a treat.', after: () => crisisMood(5) },
       { key: 'ask', label: 'Ask happy guests to write a review', hint: 'It may or may not work, but a glowing review helps a lot. Ask kindly.', role: 'Receptionist', jobs: 1, odds: 0.65, fix: 30, relief: 10, risk: 5,
-        game: GAME_CHOICE([{ prompt: 'A guest is checking out smiling. How do you ask for a review?', options: [{ t: 'We are so glad you enjoyed your stay. If you have a moment, would you tell others about it?', score: 2 }, { t: 'Please write a review.', score: 1 }, { t: 'You must write a five-star review before you go.', score: 0 }] },
-          { prompt: 'A family says they loved the pool. What do you say?', options: [{ t: 'That is lovely to hear! Would you mind sharing that in a review so other families can find us?', score: 2 }, { t: 'Great. Review us.', score: 1 }, { t: 'Then you owe us a review.', score: 0 }] }]),
+        game: GAME_CHOICE(CRISIS_WORDS['gossip.ask']),
         ok: 'A guest wrote a lovely review.', bad: 'Nobody got round to it.', after: () => addReview(drawPerson().name, 5, 'Staying here was wonderful, and the staff could not do enough for us.') },
       { key: 'apology', label: 'Post an honest message', hint: 'Explain what really happened. Free, and it takes the sting out.', odds: null, fix: 5, relief: 10, ok: 'People respected the honest message.', after: c => { c.reviewHit = 0; } }
     ] },
@@ -169,12 +163,10 @@ const CRISES = {
     actions: [
       { key: 'doors', label: 'Open the lift doors', hint: 'Slow and careful. Stop the marker in the green to open the doors just wide enough to help everyone out.', role: 'Maintenance', jobs: 1, odds: 0.8, fix: 30, relief: 18, risk: 10, game: { type: 'timing', what: 'Open the doors just wide enough to step out.' }, ok: 'The doors slid open and everyone stepped out safely.', bad: 'The doors jammed again. They need another go.' },
       { key: 'engineer', label: 'Call the lift engineer', hint: 'Costly, but they know every lift. Tell them what you know.', cost: 380, odds: 0.9, fix: 35, relief: 20, risk: 5,
-        game: GAME_CHOICE([{ prompt: 'The lift engineer answers. What do you tell them?', options: [{ t: 'The lift has stopped between the first and second floors with guests inside. Everyone is safe and we are talking to them.', score: 2 }, { t: 'The lift is broken, please come quickly!', score: 1 }, { t: 'It is a bit stuck. Come if you are passing.', score: 0 }] },
-          { prompt: 'The engineer asks if you have switched the lift off.', options: [{ t: 'Yes, it is switched off at the control panel and a member of staff is at the lift doors.', score: 2 }, { t: 'I think somebody did that.', score: 1 }, { t: 'No, we thought you would do that.', score: 0 }] }]),
+        game: GAME_CHOICE(CRISIS_WORDS['lift.engineer']),
         ok: 'The engineer reset the lift and made sure it was safe.', bad: 'The engineer could not get to you until later.' },
       { key: 'talk', label: 'Talk to the guests inside', hint: 'Keep them calm and chatting. What you say matters.', role: 'Receptionist', jobs: 1, odds: 0.75, fix: 20, relief: 14, risk: 6,
-        game: GAME_CHOICE([{ prompt: 'The guests in the lift are worried. What do you say through the doors?', options: [{ t: 'Please do not worry. You are safe, help is on its way, and I will stay right here and talk to you until the doors are open.', score: 2 }, { t: 'Someone is coming soon.', score: 1 }, { t: 'There is nothing I can do. Just wait.', score: 0 }] },
-          { prompt: 'A child in the lift asks how long it will take.', options: [{ t: 'Not long at all. Shall we play a guessing game while we wait for the doors to open?', score: 2 }, { t: 'I do not know.', score: 1 }, { t: 'Longer than you would like.', score: 0 }] }]),
+        game: GAME_CHOICE(CRISIS_WORDS['lift.talk']),
         ok: 'The guests calmed down and even started to laugh.', bad: 'The guests were more worried than ever.' },
       { key: 'drinks', label: 'Send cold drinks and sweets to the stairs', hint: 'Cheer up everyone who is waiting.', cost: 60, odds: null, fix: 0, relief: 10, ok: 'Cold drinks and sweets helped everyone wait patiently.', after: () => crisisMood(6) }
     ] },
@@ -188,11 +180,10 @@ const CRISES = {
     actions: [
       { key: 'skim', label: 'Skim the pool clean', hint: 'Nets and brushes. Two jobs for maintenance. Every leaf takes about ten taps and fades a little with each one, so be quick.', role: 'Maintenance', jobs: 2, odds: 0.8, fix: 25, relief: 12, risk: 8, game: { type: 'tap', patches: 6, what: 'Tap each leaf ten times to scoop it out.' }, ok: 'The surface is clear and sparkling.', bad: 'Plenty of leaves are still floating about.' },
       { key: 'chemicals', label: 'Rebalance the water', hint: 'Test, treat, run the filter, then test again. Put the steps in the right order.', cost: 60, role: 'Maintenance', jobs: 1, odds: 0.75, fix: 25, relief: 14, risk: 8,
-        game: { type: 'order', variants: [{ prompt: 'Put the pool-cleaning steps in the right order.', steps: ['Test the water', 'Add the right chemicals', 'Run the filter for a few hours', 'Test the water again'] }, { prompt: 'Put the steps in the right order.', steps: ['Skim off the leaves', 'Test the water', 'Treat the water', 'Check it is safe to swim'] }] },
+        game: { type: 'order', variants: CRISIS_ORDERS['pool.chemicals'] },
         ok: 'The water is clear, balanced and safe to swim in.', bad: 'The water is still cloudy. Something was missed.' },
       { key: 'specialist', label: 'Call the pool specialist', hint: 'Costly, but they know pools. Tell them what you see.', cost: 300, odds: 0.9, fix: 35, relief: 20, risk: 5,
-        game: GAME_CHOICE([{ prompt: 'The pool specialist asks what is wrong with the pool.', options: [{ t: 'The water has gone green and cloudy, there are leaves on the surface, and the filter is making a grinding noise. We have closed the pool.', score: 2 }, { t: 'The pool looks dirty.', score: 1 }, { t: 'It is fine really. Just a quick look.', score: 0 }] },
-          { prompt: 'They ask when the chemicals were last checked.', options: [{ t: 'Two days ago. The readings were normal then, so something has changed quickly.', score: 2 }, { t: 'Quite recently, I think.', score: 1 }, { t: 'I have no idea. We never write it down.', score: 0 }] }]),
+        game: GAME_CHOICE(CRISIS_WORDS['pool.specialist']),
         ok: 'The specialist cleaned the filter and put the water right.', bad: 'The specialist could only come tomorrow.' },
       { key: 'lollies', label: 'Hand out ice lollies on the terrace', hint: 'Sunshine, ice lollies and a smile. Cheers everyone up.', cost: 70, odds: null, fix: 0, relief: 10, ok: 'The terrace was full of happy guests with ice lollies.', after: () => crisisMood(6) }
     ] },
@@ -206,11 +197,10 @@ const CRISES = {
     actions: [
       { key: 'pick', label: 'Pick the lock', hint: 'Gentle and precise. Stop the marker in the green to lift the last pin and turn the lock.', role: 'Maintenance', jobs: 1, odds: 0.8, fix: 30, relief: 18, risk: 10, game: { type: 'timing', what: 'Lift the last pin at just the right moment.' }, ok: 'Click! The lock turned and the door swung open.', bad: 'The pick slipped and the pin dropped back.', after: c => crisisRepair(c, 1) },
       { key: 'locksmith', label: 'Call a locksmith', hint: 'Costly, but they open anything. Say what they need to know.', cost: 220, odds: 0.9, fix: 35, relief: 20, risk: 5,
-        game: GAME_CHOICE([{ prompt: 'The locksmith asks about the door.', options: [{ t: 'It is a guest room door on the first floor. The key goes in but will not turn, and nobody is inside.', score: 2 }, { t: 'A door is stuck.', score: 1 }, { t: 'I do not know which door. Come and find it.', score: 0 }] },
-          { prompt: 'The locksmith asks if you have tried the master key.', options: [{ t: 'Yes, and it will not turn either, so I think the lock itself has jammed. Please bring a new one.', score: 2 }, { t: 'I think so.', score: 1 }, { t: 'No, we do not have one.', score: 0 }] }]),
+        game: GAME_CHOICE(CRISIS_WORDS['lock.locksmith']),
         ok: 'The locksmith opened the door and fitted a new lock.', bad: 'The locksmith could not come until later.' },
       { key: 'keys', label: 'Find the right key', hint: 'The master key lives in the key cabinet. Put the steps in the right order.', role: 'Receptionist', jobs: 1, odds: 0.75, fix: 20, relief: 10, risk: 6,
-        game: { type: 'order', variants: [{ prompt: 'Put the steps in the right order.', steps: ['Check the room number on the door', 'Find the right tag in the key cabinet', 'Try the master key gently', 'Open the door and check the room'] }, { prompt: 'Put the steps in the right order.', steps: ['Ask the guest which room it is', 'Open the key cabinet', 'Take out the master key', 'Try it in the lock'] }] },
+        game: { type: 'order', variants: CRISIS_ORDERS['lock.keys'] },
         ok: 'The master key turned and the door opened.', bad: 'It was the wrong key, and now the lock is stiffer.' },
       { key: 'lobby', label: 'Look after the waiting guest', hint: 'A comfy chair and a hot drink while they wait.', cost: 40, odds: null, fix: 0, relief: 10, ok: 'The guest enjoyed a hot drink and a comfy chair in the lobby.', after: () => crisisMood(6) }
     ] }
@@ -250,6 +240,7 @@ function ensureCrises(d) {
   if (!Array.isArray(d.crises)) d.crises = [];
   if (!Number.isInteger(d.crisisLast)) d.crisisLast = -99;
   if (!Array.isArray(d.crisisLog)) d.crisisLog = [];
+  if (!d.gameStats || typeof d.gameStats !== 'object' || Array.isArray(d.gameStats)) d.gameStats = {};
   if (!d.safeguards || typeof d.safeguards !== 'object') d.safeguards = {};
   if (!d.medals || typeof d.medals !== 'object') d.medals = {};
   if (!Array.isArray(d.medalQueue)) d.medalQueue = [];
@@ -366,20 +357,27 @@ function escalateIncident(inc) {
 /* ---------- The games ---------- */
 /* How a skill game is set up for this person: bigger target, more time or a hint with experience, and a trait that suits the game helps further.
    Returns null for an action with no game. */
+/* The next question for a word or order game: never the one asked last time, so the same game does not repeat itself. */
+const lastAsked = new WeakMap();
+function nextVariant(game) {
+  const last = lastAsked.get(game), v = pick(game.variants.length > 1 ? game.variants.filter(x => x !== last) : game.variants);
+  lastAsked.set(game, v);
+  return v;
+}
 function crisisGameSpec(a, staff) {
   if (!a.game) return null;
   const skill = staff ? staff.skill : 3, edge = traitEdge(staff), type = a.game.type, perks = crisisPerks(), helped = edge === type;
   const base = { type, skill, edge, helped, what: a.game.what || '' };
-  if (type === 'timing') return Object.assign(base, { zone: clamp(0.16 + 0.05 * (skill - 3) + (helped ? 0.06 : 0) + perks.zone, 0.08, 0.45), sweepMs: 1200, center: 0.25 + Math.random() * 0.5 });
+  if (type === 'timing') return Object.assign(base, { zone: clamp(CRISIS.timingZone + 0.05 * (skill - 3) + (helped ? 0.06 : 0) + perks.zone, 0.08, 0.45), sweepMs: CRISIS.timingMs, center: 0.25 + Math.random() * 0.5 });
   if (type === 'tap') return Object.assign(base, { patches: a.game.patches || 6, taps: a.game.taps || CRISIS.tapHits, seconds: Math.round((CRISIS.tapSeconds + 1.2 * (skill - 3) + (helped ? 3 : 0)) * 10) / 10 });
   if (type === 'choice') {
-    const v = pick(a.game.variants), hint = skill >= 4 || helped;
+    const v = nextVariant(a.game), hint = skill >= 4 || helped;
     let options = crisisShuffle(v.options.map(o => ({ t: crisisText(o.t), score: o.score })));
     if (hint) options = options.filter(o => o.score !== 0);   // experience rules out the worst answer
     return Object.assign(base, { prompt: crisisText(v.prompt), options, hint });
   }
   if (type === 'order') {
-    const v = pick(a.game.variants), hint = skill >= 4 || helped;
+    const v = nextVariant(a.game), hint = skill >= 4 || helped;
     return Object.assign(base, { prompt: v.prompt, steps: crisisShuffle(v.steps.map((t, i) => ({ t, i }))), count: v.steps.length, hint });   // with experience the first step is shown
   }
   return null;
@@ -392,6 +390,17 @@ function crisisJudge(spec, answer) {
   if (spec.type === 'choice') { const o = spec.options[Number(answer)]; return { success: !!o && o.score >= 1, perfect: !!o && o.score === 2 }; }
   if (spec.type === 'order') { const m = Number(answer); return { success: m <= 1, perfect: m === 0 }; }
   return { success: false, perfect: false };
+}
+
+/* What the games are like to play, kept in the save for tuning and shown on the Crisis page: for each kind of game how often it was played,
+   won and played perfectly, and (when the game measures it) how far from the middle the timing was in milliseconds or how many taps a
+   second. `extra.value` is that measurement. Games left to chance are not counted. */
+function noteGame(spec, result, extra) {
+  const t = S.gameStats[spec.type] || (S.gameStats[spec.type] = { plays: 0, wins: 0, perfect: 0, sum: 0, n: 0 });
+  t.plays++;
+  if (result.success) t.wins++;
+  if (result.perfect) t.perfect++;
+  if (extra && Number.isFinite(extra.value)) { t.sum += extra.value; t.n++; }
 }
 
 /* ---------- Taking an action ---------- */

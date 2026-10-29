@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 
 const root = path.join(__dirname, '..', 'js');
-const files = ['storage.js', 'data.js', 'names-data.js', 'names.js', 'scenarios.js', 'scenarios-guests.js', 'scenarios-business.js', 'scenarios-extra.js', 'scenarios-fun.js', 'engine.js', 'engine-extra.js', 'engine-contractors.js', 'engine-bookings.js', 'engine-events.js', 'engine-mail.js', 'engine-season.js', 'engine-challenges.js', 'engine-coach.js', 'engine-bank.js', 'engine-milestones.js', 'engine-fun.js', 'engine-phone.js', 'engine-guestbook.js', 'engine-career.js', 'engine-wishes.js', 'engine-mgmt.js', 'engine-staffing.js', 'engine-standards.js', 'engine-crises.js', 'engine-team.js', 'engine-dashboard.js'];
+const files = ['storage.js', 'data.js', 'names-data.js', 'names.js', 'scenarios.js', 'scenarios-guests.js', 'scenarios-business.js', 'scenarios-extra.js', 'scenarios-fun.js', 'engine.js', 'engine-extra.js', 'engine-contractors.js', 'engine-bookings.js', 'engine-events.js', 'engine-mail.js', 'engine-season.js', 'engine-challenges.js', 'engine-coach.js', 'engine-bank.js', 'engine-milestones.js', 'engine-fun.js', 'engine-phone.js', 'engine-guestbook.js', 'engine-career.js', 'engine-wishes.js', 'engine-mgmt.js', 'engine-staffing.js', 'engine-standards.js', 'crisis-words.js', 'engine-crises.js', 'engine-team.js', 'engine-dashboard.js'];
 const errors = [];
 const sandbox = { console: { log: console.log, error: (...a) => errors.push(a.map(String).join(' ')) }, Math, JSON, Date, Number, Object, Array, String, Set, Map, Error };
 vm.createContext(sandbox);
@@ -2197,15 +2197,15 @@ const T = code => JP(run(`JSON.stringify((function(){ ${code} })())`));
     const valve = CRISES.pipe.actions.find(a => a.key === 'valve'), dry = CRISES.pipe.actions.find(a => a.key === 'dry'), plumber = CRISES.pipe.actions.find(a => a.key === 'plumber'), barbecue = CRISES.power.actions.find(a => a.key === 'barbecue'), phone = CRISES.power.actions.find(a => a.key === 'phone'), treat = CRISES.pipe.actions.find(a => a.key === 'treat');
     const sp = (a, skill, trait) => crisisGameSpec(a, { skill, trait: trait || 'Hard-working' });
     o.specNone = crisisGameSpec(treat, mt) === null && crisisGameSpec(CRISIS_NOTICE, mt) === null;
-    o.timing = Math.abs(sp(valve, 3).zone - 0.16) < 1e-9 && Math.abs(sp(valve, 5).zone - 0.26) < 1e-9 && Math.abs(sp(valve, 1).zone - 0.08) < 1e-9 && Math.abs(sp(valve, 3, 'Calm under pressure').zone - 0.22) < 1e-9 && sp(valve, 3, 'Calm under pressure').helped === true && sp(valve, 3).helped === false && sp(valve, 3).sweepMs === 1200 && sp(valve, 3).center >= 0.25 && sp(valve, 3).center <= 0.75 && Math.abs(crisisGameSpec(valve, null).zone - 0.16) < 1e-9;
+    o.timing = Math.abs(sp(valve, 3).zone - 0.14) < 1e-9 && Math.abs(sp(valve, 5).zone - 0.24) < 1e-9 && Math.abs(sp(valve, 1).zone - 0.08) < 1e-9 && Math.abs(sp(valve, 3, 'Calm under pressure').zone - 0.2) < 1e-9 && sp(valve, 3, 'Calm under pressure').helped === true && sp(valve, 3).helped === false && sp(valve, 3).sweepMs === 1000 && sp(valve, 3).center >= 0.25 && sp(valve, 3).center <= 0.75 && Math.abs(crisisGameSpec(valve, null).zone - 0.14) < 1e-9;
     o.timingCap = sp(valve, 5, 'Calm under pressure').zone <= 0.45;
     o.tap = sp(dry, 3).patches === 6 && sp(dry, 3).taps === 10 && sp(dry, 3).seconds === 13 && Math.abs(sp(dry, 5).seconds - 15.4) < 1e-9 && Math.abs(sp(dry, 1).seconds - 10.6) < 1e-9 && sp(dry, 3, 'Meticulous').seconds === 16 && sp(dry, 3, 'Meticulous').helped === true && sp(dry, 3).taps === CRISIS.tapHits;
     const ch3 = sp(plumber, 3), ch4 = sp(plumber, 4), ch3g = sp(plumber, 3, 'Great with guests');
     o.choice = ch3.options.length === 3 && ch3.options.map(x => x.score).sort().join() === '0,1,2' && ch3.hint === false && ch3.prompt.length > 10 && ch4.options.length === 2 && ch4.options.every(x => x.score > 0) && ch4.hint === true && ch3g.options.length === 2 && ch3g.hint === true;
     o.fill = !/\\{hotel\\}/.test(JSON.stringify(sp(phone, 3))) && Array.from({ length: 30 }, () => sp(phone, 3)).some(x => x.options.some(y => y.t.includes(S.hotel)));
     const od3 = sp(barbecue, 3), od4 = sp(barbecue, 4);
-    o.order = od3.steps.length === 4 && od3.count === 4 && od3.steps.map(x => x.i).sort().join() === '0,1,2,3' && od3.hint === false && od4.hint === true && sp(barbecue, 3, 'Very organised').hint === true && Array.from({ length: 40 }, () => sp(barbecue, 3).steps.map(x => x.i).join()).some(x => x !== '0,1,2,3');
-    o.perkZone = (() => { S.medals = { a: 1, b: 1, c: 1 }; const z = sp(valve, 3).zone; S.medals = {}; return Math.abs(z - 0.2) < 1e-9; })();
+    o.order = (od3.steps.length === 4 || od3.steps.length === 5) && od3.count === od3.steps.length && od3.steps.map(x => x.i).sort().join() === Array.from({ length: od3.count }, (_, i) => i).join() && od3.hint === false && od4.hint === true && sp(barbecue, 3, 'Very organised').hint === true && Array.from({ length: 40 }, () => sp(barbecue, 3).steps.map(x => x.i).join()).some(x => x !== '0,1,2,3');
+    o.perkZone = (() => { S.medals = { a: 1, b: 1, c: 1 }; const z = sp(valve, 3).zone; S.medals = {}; return Math.abs(z - 0.18) < 1e-9; })();
     // ---- judging what she did ----
     const T = { type: 'timing', center: 0.5, zone: 0.2 };
     o.judgeTiming = crisisJudge(T, 0.5).perfect === true && crisisJudge(T, 0.55).success === true && crisisJudge(T, 0.55).perfect === false && crisisJudge(T, 0.61).success === false && crisisJudge(T, 0.4).success === true && crisisJudge(T, 0.39).success === false;
@@ -2357,6 +2357,44 @@ const T = code => JP(run(`JSON.stringify((function(){ ${code} })())`));
   const bad = Object.entries(r).filter(([k, v]) => v !== true).map(([k, v]) => `${k} is ${JSON.stringify(v)}`);
   bad.forEach(b => fail('lift, pool and door crises: ' + b));
   if (!bad.length) ok('lift, pool and door crises: when each can happen (the lift and pool need those facilities), the pool closing, the stuck door and the lock pick, the games, safeguards, medals, warnings and the nightly rise');
+}
+{
+  const r = JP(run(`(function () { const o = {};
+    const rand0 = Math.random, real = () => { Math.random = rand0; };
+    newGame('G', 'G'); S.money = 100000;
+    const words = Object.entries(CRISIS_WORDS), orders = Object.entries(CRISIS_ORDERS);
+    // ---- every word game: four questions, each with one best, one middling and one poor answer ----
+    o.fourQuestions = words.length === 10 && words.every(([, qs]) => qs.length === 4) && orders.length === 3 && orders.every(([, ps]) => ps.length === 4);
+    o.threeAnswers = words.every(([, qs]) => qs.every(x => x.prompt && x.options.length === 3 && x.options.map(a => a.score).sort().join() === '0,1,2' && x.options.every(a => a.t && a.t.length > 2)));
+    o.uniquePrompts = words.every(([, qs]) => new Set(qs.map(x => x.prompt)).size === 4) && orders.every(([, ps]) => new Set(ps.map(x => x.steps.join('|'))).size === 4);
+    // ---- the length of an answer must not give the best one away ----
+    let longest = 0, shortest = 0, total = 0;
+    for (const [, qs] of words) for (const x of qs) { const len = x.options.map(a => a.t.length), best = x.options.find(a => a.score === 2).t.length; total++; if (best === Math.max(...len)) longest++; if (best === Math.min(...len)) shortest++; }
+    o.lengthFair = total === 40 && longest / total >= 0.2 && longest / total <= 0.4 && shortest / total >= 0.2 && shortest / total <= 0.4;
+    o.eachGameMixed = words.every(([, qs]) => { const k = qs.map(x => { const len = x.options.map(a => a.t.length), b = x.options.find(a => a.score === 2).t.length; return b === Math.max(...len) ? 'L' : b === Math.min(...len) ? 'S' : 'M'; }); return new Set(k).size >= 2; });
+    // ---- order puzzles: four or five distinct steps, and no step is the same as another ----
+    o.puzzleSteps = orders.every(([, ps]) => ps.every(x => x.steps.length >= 4 && x.steps.length <= 5 && new Set(x.steps).size === x.steps.length));
+    // ---- the actions use them, and the same question is never asked twice running ----
+    o.wired = words.every(([key]) => { const [c, a] = key.split('.'); return CRISES[c].actions.find(x => x.key === a).game.variants === CRISIS_WORDS[key]; }) && orders.every(([key]) => { const [c, a] = key.split('.'); return CRISES[c].actions.find(x => x.key === a).game.variants === CRISIS_ORDERS[key]; });
+    const plumber = CRISES.pipe.actions.find(a => a.key === 'plumber'); let repeats = 0, last = null, seen = new Set();
+    for (let i = 0; i < 400; i++) { const sp = crisisGameSpec(plumber, { skill: 3, trait: 'Always on time' }); if (sp.prompt === last) repeats++; last = sp.prompt; seen.add(sp.prompt); }
+    o.noRepeat = repeats === 0 && seen.size === 4;
+    const barb = CRISES.power.actions.find(a => a.key === 'barbecue'); let r2 = 0, l2 = null, seen2 = new Set();
+    for (let i = 0; i < 400; i++) { const sp = crisisGameSpec(barb, { skill: 3, trait: 'Always on time' }); const key = sp.steps.slice().sort((a, b) => a.i - b.i).map(x => x.t).join('|'); if (key === l2) r2++; l2 = key; seen2.add(key); }
+    o.noRepeatOrder = r2 === 0 && seen2.size === 4;
+    // ---- hints still work with the new questions: the poor answer goes, the best one stays ----
+    const hinted = crisisGameSpec(plumber, { skill: 4, trait: 'Always on time' }); o.hintKeeps = hinted.options.length === 2 && hinted.options.every(a => a.score >= 1) && hinted.options.some(a => a.score === 2);
+    // ---- the game statistics ----
+    S.gameStats = {};
+    noteGame({ type: 'timing' }, { success: true, perfect: false }, { value: 40 }); noteGame({ type: 'timing' }, { success: false, perfect: false }, { value: 100 }); noteGame({ type: 'tap' }, { success: true, perfect: true }, { value: 6 }); noteGame({ type: 'choice' }, { success: true, perfect: true });
+    o.stats = S.gameStats.timing.plays === 2 && S.gameStats.timing.wins === 1 && S.gameStats.timing.sum === 140 && S.gameStats.timing.n === 2 && S.gameStats.tap.perfect === 1 && S.gameStats.choice.n === 0 && S.gameStats.choice.plays === 1;
+    const old = JSON.parse(JSON.stringify(S)); delete old.gameStats; const mo = migrate(old); o.statsOldSave = validState(mo) && typeof mo.gameStats === 'object' && Object.keys(mo.gameStats).length === 0;
+    const kept = migrate(JSON.parse(JSON.stringify(S))); o.statsKept = kept.gameStats.timing.plays === 2;
+    real();
+    return o; })()`));
+  const bad = Object.entries(r).filter(([k, v]) => v !== true).map(([k, v]) => `${k} is ${JSON.stringify(v)}`);
+  bad.forEach(b => fail('word and order games: ' + b));
+  if (!bad.length) ok('word and order games: four questions per game, each with a best, middling and poor answer, answer length gives nothing away (best is longest, shortest or in between about a third of the time each), four puzzles per order game, no question twice running, hints, and the game statistics');
 }
 
 /* ---------- guest faces ---------- */

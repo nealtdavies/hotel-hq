@@ -117,11 +117,21 @@ function heroesCard() {
   if (!S.heroLog.length) return '';
   return `<div class="section-title"><h3>Heroes of the hotel</h3></div><div class="card list">${S.heroLog.map((h, i) => `<div class="row"><b>${esc(h.name)}</b><span class="muted small">${esc(h.role)}, ${esc(h.crisis)}, day ${h.day + 1}</span>${h.promoted ? '<span class="chip good">Promoted</span>' : ''}<button class="btn sm ghost right" data-act="heroCert" data-i="${i}">Certificate</button></div>`).join('')}</div>`;
 }
+/* How the games have gone, for the grown-up: plays, wins and perfect games for each kind, and how tight the timing and how fast the tapping. */
+function gameStatsCard() {
+  const rows = Object.keys(GAME_NAMES).filter(k => S.gameStats[k] && S.gameStats[k].plays).map(k => {
+    const t = S.gameStats[k], avg = t.n ? t.sum / t.n : null;
+    const extra = k === 'timing' ? `${Math.round(avg)} ms from the middle on average` : k === 'tap' ? `${avg.toFixed(1)} taps a second on average` : '';
+    return `<tr><td>${GAME_NAMES[k]}${extra ? `<div class="small muted">${extra}</div>` : ''}</td><td>${t.plays}</td><td>${pct(t.wins / t.plays)}</td><td>${pct(t.perfect / t.plays)}</td></tr>`;
+  });
+  if (!rows.length) return '';
+  return `<div class="section-title"><h3>How the games are going</h3></div><div class="card"><div class="scroll-x"><table class="ledger"><tr><th>Game</th><th>Played</th><th>Won</th><th>Perfect</th></tr>${rows.join('')}</table></div><div class="small muted" style="margin-top:8px">Games left to chance are not counted. If most games are won easily, or hardly any are, this shows it.</div></div>`;
+}
 function viewCrisis() {
   const quiet = !S.crises.length && !S.warning;
   return `<div class="pagehead"><div><h2>Crisis</h2><p>${quiet ? 'Nothing is wrong right now. Keep standards high, prepare, and crises stay rare.' : 'Trouble grows every night. Build Progress to 100 before Trouble reaches 100. Each action costs cash or jobs from your team. Play the skill games well and it goes better.'}</p></div></div>
     ${S.warning ? warningCard() : ''}${S.crises.map(crisisCard).join('')}
-    ${standardsCard()}${safeguardsCard()}${medalsCard()}${heroesCard()}
+    ${standardsCard()}${safeguardsCard()}${medalsCard()}${heroesCard()}${gameStatsCard()}
     ${S.crisisLog.length ? `<div class="section-title"><h3>Past crises</h3></div><div class="card list">${S.crisisLog.map(l => `<div class="row"><span class="chip ${l.outcome === 'resolved' ? 'good' : 'bad'}">${l.outcome === 'resolved' ? 'Handled' : 'Out of hand'}</span><span>${esc(l.name)}</span><span class="muted small right">Day ${l.day + 1}</span></div>`).join('')}</div>` : ''}`;
 }
 VIEWS.crisis = viewCrisis;

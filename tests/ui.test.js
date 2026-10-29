@@ -1146,6 +1146,10 @@ const assert = (c, m) => { if (!c) { failed++; console.error('FAIL:', m); } else
     for (let i = 0; i < 60; i++) await page.click('.modal .tapstage .patch >> nth=0');
     await page.waitForTimeout(250);
     assert(await page.evaluate(() => ui.game === null && S.crises[0].acted.dry === S.day), 'tapping them finishes the game');
+    assert(await page.evaluate(() => S.gameStats.tap && S.gameStats.tap.plays >= 1 && S.gameStats.tap.wins >= 1 && S.gameStats.tap.n >= 1 && S.gameStats.timing && S.gameStats.timing.plays >= 1 && S.gameStats.timing.n >= 1), 'playing the games is counted (tapping speed and timing accuracy)');
+    await page.evaluate(() => { actions.nav({ view: 'crisis' }); });
+    const gs = await page.locator('.content').innerText();
+    assert(/How the games are going/.test(gs) && /Tapping game/.test(gs) && /taps a second on average/.test(gs) && /ms from the middle on average/.test(gs), 'the Crisis page shows how the games are going');
     await page.click('.crisis-card [data-act="crisisPlay"][data-key="plumber"]'); await page.waitForTimeout(400);
     assert(await page.locator('.modal .gstage.banner .gbg').count() === 1, 'a word game shows its picture as a banner');
     await page.click('.modal [data-act="crisisCancel"]'); await page.waitForTimeout(150);
