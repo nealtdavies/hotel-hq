@@ -1,6 +1,6 @@
 {
- "count": 354,
- "bytes": 26805432,
+ "count": 355,
+ "bytes": 26911312,
  "files": [
   "assets/games/lift-doors-bg.jpg",
   "assets/games/lift-doors-f1.png",
@@ -23,6 +23,7 @@
   "assets/games/pipe-valve-f5.png",
   "assets/games/pipe-valve-f6.png",
   "assets/games/pipe-valve-f7.png",
+  "assets/games/roof-dry-bg.jpg",
   "assets/games/roof-roofer-bg.jpg",
   "assets/games/roof-tarp-bg.jpg",
   "assets/games/roof-tarp-f1.png",
