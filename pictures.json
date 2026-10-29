@@ -1,6 +1,6 @@
 {
- "count": 384,
- "bytes": 30939111,
+ "count": 392,
+ "bytes": 31978305,
  "files": [
   "assets/games/gossip-ask-bg.jpg",
   "assets/games/gossip-reply-bg.jpg",
@@ -258,6 +258,14 @@
   "assets/scenes/corporate-booking.jpg",
   "assets/scenes/council-letter.jpg",
   "assets/scenes/crab-in-lobby.jpg",
+  "assets/scenes/crisis-gossip.jpg",
+  "assets/scenes/crisis-lift.jpg",
+  "assets/scenes/crisis-lock.jpg",
+  "assets/scenes/crisis-mice.jpg",
+  "assets/scenes/crisis-pipe.jpg",
+  "assets/scenes/crisis-pool.jpg",
+  "assets/scenes/crisis-power.jpg",
+  "assets/scenes/crisis-roof.jpg",
   "assets/scenes/dance-pad.jpg",
   "assets/scenes/delayed-arrival.jpg",
   "assets/scenes/delivery-delay.jpg",
