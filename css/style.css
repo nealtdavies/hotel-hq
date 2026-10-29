@@ -500,10 +500,9 @@ table.calendar th,table.calendar td{padding:3px 2px}
 .gstage{position:relative;aspect-ratio:3/2;margin:8px 0;border-radius:var(--radius-sm);overflow:hidden;background:var(--surface2)}
 .gstage.banner{aspect-ratio:auto;height:150px}
 .gbg,.gframe{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;user-select:none;-webkit-user-drag:none}
-.gframe{opacity:0;transition:opacity .05s linear}
+.gframe{opacity:0}   /* frames swap instantly: a fade would show every frame's fixed parts (such as the lock) dimmed and ghosted for an instant */
 .gframe.on{opacity:1}
 .tapstage .patch{position:absolute;width:16%;height:auto;aspect-ratio:1;margin:0;transform:translate(-50%,-50%)}
 .tapstage .patch.art{width:20%;background:transparent;opacity:1;padding:0}
 .patch.art{background:transparent;opacity:1;padding:0;border-radius:0}
 .patchimg{display:block;width:100%;height:100%;object-fit:contain;pointer-events:none;-webkit-user-drag:none}
-@media (prefers-reduced-motion:reduce){.gframe{transition:none}}
