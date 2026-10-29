@@ -6,7 +6,7 @@
    plays, or if she would rather not, she can leave it to chance from inside the pop-up. The rules and the judging are in engine-crises.js;
    this file only draws the games and passes what she did to crisisJudge. ui.game holds the game being played. */
 
-const GAME_HELP = { timing: 'Press Stop when the moving marker is inside the green zone. The middle is a perfect hit.', tap: 'Tap each patch again and again. It fades a little with every tap and is gone after about ten. Clear them all before the time runs out.', choice: 'Read each answer, then pick the best one.', order: 'Tap the steps in the order they should happen.' };
+const GAME_HELP = { timing: 'Press Stop when the moving marker is inside the green zone. The middle is a perfect hit.', tap: 'Tap each patch again and again. It fades a little with every tap and is gone after about ten. Clear them all before the time runs out.', choice: 'Read each answer, then pick the best one. A weaker answer only half works, and a wrong one makes things worse.', order: 'Tap the steps in the order they should happen.', maths: 'A quick sum comes up as you do this job. Work out the answer and pick it before the time runs out. An answer in the first half of the time is perfect.' };
 /* Optional artwork, in assets/games (see GAME-ART.md). Each game may have a scene behind it (<crisis>-<action>-bg.jpg), the moving timing games
    a set of pictures that swap as the marker moves (-f1.webp, -f2.webp and so on, the middle one is the "just right" pose), and the tapping games
    a transparent picture for each patch (patch-wet.webp, patch-crumb.webp, patch-leaf.webp). Whatever is missing is simply not drawn, so every game works with no
@@ -38,7 +38,9 @@ actions.crisisPlay = async d => {
   const art = await probeArt(`${c.key}-${a.key}`);   // which pictures exist for this game
   ui.probing = false;
   if (!crisisById(c.id)) return;
-  const spec = crisisGameSpec(a, staff);
+  const memoKey = `${c.id}:${a.key}:${S.day}:${staff ? staff.id : ''}`, memo = ui.askedToday || (ui.askedToday = {});   // closing and reopening gives the same question, so it cannot be re-rolled for an easier one
+  const spec = memo[memoKey] || crisisGameSpec(a, staff);
+  if (['choice', 'maths', 'order'].includes(spec.type)) memo[memoKey] = spec;
   if (spec.type === 'timing' && art.frames.length >= 2) spec.center = 0.5;   // the middle picture is the "just right" pose
   ui.game = { id: c.id, key: a.key, staffId: staff ? staff.id : undefined, label: a.label, spec, odds: crisisOdds(a, staff), who: staff ? staff.id : null, art, pos: 0, frozen: false, tapped: [], hits: {}, taps: 0, left: spec.seconds || 0, picked: null, next: 0, mistakes: 0, done: [] };
   openModal({ type: 'crisisGame' });
@@ -74,11 +76,21 @@ function gameBody(g) {
   }
   if (sp.type === 'choice') {
     if (g.picked !== null) {
-      const o = sp.options[g.picked], msg = o.score === 2 ? 'The best answer!' : o.score === 1 ? 'That works, but it could have been better.' : 'That did not help.';
-      return `${banner}<div class="stack">${sp.options.map((x, i) => `<div class="opt ${i === g.picked ? 'picked' : ''}" style="cursor:default"><span class="t">${esc(x.t)}${i === g.picked ? `<span class="why">${msg}</span>` : ''}</span></div>`).join('')}</div>
+      const o = sp.options[g.picked], msg = o.score === 2 ? 'The best answer!' : o.score === 1 ? 'That works, but only half as well as the best answer.' : 'That did not help, and it upset the guests.';
+      return `${banner}<div class="stack">${sp.options.map((x, i) => `<div class="opt ${i === g.picked ? 'picked' : ''}" style="cursor:default"><span class="t">${esc(x.t)}${i === g.picked ? `<span class="why ${o.score === 2 ? 'good' : o.score === 1 ? 'warn' : ''}">${msg}</span>` : ''}</span></div>`).join('')}</div>
         <div class="actions"><button class="btn primary big" data-act="gameDone" data-autofocus>Continue</button></div>`;
     }
     return `${banner}${sp.hint ? `<div class="small muted" style="margin-bottom:6px">Your experience rules out the worst answer.</div>` : ''}<div class="stack">${sp.options.map((x, i) => `<button class="opt" data-act="gameChoice" data-i="${i}"><span class="t">${esc(x.t)}</span></button>`).join('')}</div>`;
+  }
+  if (sp.type === 'maths') {
+    if (g.picked !== null) {
+      const right = sp.options.findIndex(o => o.correct);
+      return `${banner}<div class="stack">${sp.options.map((x, i) => `<div class="opt ${i === g.picked ? 'picked' : ''}" style="cursor:default"><span class="t">${esc(x.t)}${i === right ? '<span class="why good">The right answer</span>' : i === g.picked ? '<span class="why">Not quite</span>' : ''}</span></div>`).join('')}</div>
+        <div class="small" style="margin:10px 0 0"><b>The working:</b> ${esc(sp.explain)}</div>
+        <div class="actions"><button class="btn primary big" data-act="gameDone" data-autofocus>Continue</button></div>`;
+    }
+    const head = `<div class="row small"><span id="tapTime"><b>${g.left.toFixed(1)}</b> seconds left</span></div><div class="bar" style="margin:6px 0"><i id="tapBar" style="width:${Math.max(0, g.left / sp.seconds * 100)}%"></i></div>`;
+    return `${banner}${head}${sp.hint ? '<div class="small muted" style="margin-bottom:6px">Your experience rules out one wrong answer.</div>' : ''}<div class="stack">${sp.options.map((x, i) => `<button class="opt" data-act="gameChoice" data-i="${i}"><span class="t">${esc(x.t)}</span></button>`).join('')}</div>`;
   }
   if (sp.type === 'order') {
     return `${banner}${sp.hint ? `<div class="small muted" style="margin-bottom:6px">Your experience shows you the first step: <b>${esc(sp.steps.find(s => s.i === 0).t)}</b></div>` : ''}<div class="stack">${sp.steps.map(s => g.done.includes(s.i) ? `<div class="opt picked" style="cursor:default"><span class="t">${g.done.indexOf(s.i) + 1}. ${esc(s.t)}</span></div>` : `<button class="opt" data-act="gameStep" data-i="${s.i}"><span class="t">${esc(s.t)}</span></button>`).join('')}</div>
@@ -90,12 +102,12 @@ MODALS.crisisGame = () => {
   const g = ui.game;
   if (!g) return null;
   const sp = g.spec, who = g.who ? staffById(g.who) : null;
-  const prompt = sp.type === 'choice' || sp.type === 'order' ? sp.prompt : sp.what;
+  const prompt = sp.type === 'choice' || sp.type === 'order' || sp.type === 'maths' ? sp.prompt : sp.what;
   return { inner: `<div class="chip good">${GAME_NAMES[sp.type]}</div><h2 style="margin:6px 0">${esc(g.label)}</h2>
     ${who ? `<div class="row small" style="margin-bottom:6px">${avatar(who, 'sm')}<b>${esc(who.name)}</b><span class="stars">${stars(who.skill)}</span>${sp.helped ? `<span class="chip good">${esc(who.trait)}: ${TRAIT_HELP[sp.type]}</span>` : ''}</div>` : ''}
     <p style="margin:0 0 4px"><b>${esc(prompt)}</b></p><p class="muted small" style="margin:0 0 10px">${GAME_HELP[sp.type]}</p>
     ${gameBody(g)}
-    <div class="actions" style="margin-top:14px"><button class="btn ghost" data-act="crisisCancel">Not now</button><button class="btn ghost" data-act="crisisSkip">Leave it to chance (${pct(g.odds)})</button></div>` };
+    ${g.picked !== null ? '' : `<div class="actions" style="margin-top:14px"><button class="btn ghost" data-act="crisisCancel">Not now</button><button class="btn ghost" data-act="crisisSkip">Leave it to chance (${pct(g.odds)})</button></div>`}` };   // once an answer is picked there is only Continue, so a bad result cannot be swapped for the dice
 };
 
 /* ---------- Playing ---------- */
@@ -111,8 +123,8 @@ actions.tapPatch = d => {
   if (g.tapped.length >= g.spec.patches) return finishCrisisGame(crisisJudge(g.spec, { tapped: g.tapped.length, left: g.left }), { value: tapRate(g) });
   render();
 };
-actions.gameChoice = d => { const g = ui.game; if (g && g.spec.type === 'choice' && g.picked === null) { g.picked = Number(d.i); render(); } };
-actions.gameDone = () => { const g = ui.game; if (g && g.picked !== null) finishCrisisGame(crisisJudge(g.spec, g.picked)); };
+actions.gameChoice = d => { const g = ui.game; if (g && (g.spec.type === 'choice' || g.spec.type === 'maths') && g.picked === null) { g.picked = Number(d.i); if (g.spec.type === 'maths') g.frozen = true; render(); } };
+actions.gameDone = () => { const g = ui.game; if (g && g.picked !== null) finishCrisisGame(crisisJudge(g.spec, g.spec.type === 'maths' ? { index: g.picked, left: g.left } : g.picked), g.spec.type === 'maths' ? { value: g.spec.seconds - g.left } : undefined); };
 actions.gameStep = d => {
   const g = ui.game;
   if (!g || g.spec.type !== 'order') return;
@@ -140,7 +152,7 @@ function gameLoops() {
     };
     gameFrame = requestAnimationFrame(step);
   }
-  if (g.spec.type === 'tap' && !gameClock) {
+  if ((g.spec.type === 'tap' || g.spec.type === 'maths') && !gameClock) {
     let last = performance.now();
     gameClock = setInterval(() => {
       const cur = ui.game;
@@ -149,7 +161,7 @@ function gameLoops() {
       const t = document.getElementById('tapTime'), b = document.getElementById('tapBar');
       if (t) t.innerHTML = `<b>${cur.left.toFixed(1)}</b> seconds left`;
       if (b) b.style.width = Math.max(0, cur.left / cur.spec.seconds * 100) + '%';
-      if (cur.left <= 0) { clearInterval(gameClock); gameClock = null; finishCrisisGame(crisisJudge(cur.spec, { tapped: cur.tapped.length, left: 0 }), { value: tapRate(cur) }); }
+      if (cur.left <= 0) { clearInterval(gameClock); gameClock = null; if (cur.spec.type === 'maths') finishCrisisGame(crisisJudge(cur.spec, { index: null, left: 0 }), { value: cur.spec.seconds }); else finishCrisisGame(crisisJudge(cur.spec, { tapped: cur.tapped.length, left: 0 }), { value: tapRate(cur) }); }
     }, 100);
   }
 }

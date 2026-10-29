@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 
 const root = path.join(__dirname, '..', 'js');
-const files = ['storage.js', 'data.js', 'names-data.js', 'names.js', 'scenarios.js', 'scenarios-guests.js', 'scenarios-business.js', 'scenarios-extra.js', 'scenarios-fun.js', 'engine.js', 'engine-extra.js', 'engine-contractors.js', 'engine-bookings.js', 'engine-events.js', 'engine-mail.js', 'engine-season.js', 'engine-challenges.js', 'engine-coach.js', 'engine-bank.js', 'engine-milestones.js', 'engine-fun.js', 'engine-phone.js', 'engine-guestbook.js', 'engine-career.js', 'engine-wishes.js', 'engine-mgmt.js', 'engine-staffing.js', 'engine-standards.js', 'crisis-words.js', 'engine-crises.js', 'engine-team.js', 'engine-dashboard.js'];
+const files = ['storage.js', 'data.js', 'names-data.js', 'names.js', 'scenarios.js', 'scenarios-guests.js', 'scenarios-business.js', 'scenarios-extra.js', 'scenarios-fun.js', 'engine.js', 'engine-extra.js', 'engine-contractors.js', 'engine-bookings.js', 'engine-events.js', 'engine-mail.js', 'engine-season.js', 'engine-challenges.js', 'engine-coach.js', 'engine-bank.js', 'engine-milestones.js', 'engine-fun.js', 'engine-phone.js', 'engine-guestbook.js', 'engine-career.js', 'engine-wishes.js', 'engine-mgmt.js', 'engine-staffing.js', 'engine-standards.js', 'crisis-words.js', 'crisis-maths.js', 'engine-crises.js', 'engine-team.js', 'engine-dashboard.js'];
 const errors = [];
 const sandbox = { console: { log: console.log, error: (...a) => errors.push(a.map(String).join(' ')) }, Math, JSON, Date, Number, Object, Array, String, Set, Map, Error };
 vm.createContext(sandbox);
@@ -2339,7 +2339,7 @@ const T = code => JP(run(`JSON.stringify((function(){ ${code} })())`));
     o.locksmithCost = (S.money = 100000, doCrisisAction(lk.id, 'locksmith', undefined, { success: true }).ok) && S.money === 100000 - 220;
     S.crises = []; S.rooms.forEach(x => { x.damaged = false; });
     // ---- the games each action uses ----
-    const games = { lift: ['timing', 'choice', 'choice', null], pool: ['tap', 'order', 'choice', null], lock: ['timing', 'choice', 'order', null] };
+    const games = { lift: ['timing', 'choice', 'choice', 'maths'], pool: ['tap', 'order', 'choice', 'maths'], lock: ['timing', 'choice', 'order', 'maths'] };
     o.gameTypes = Object.keys(games).every(k => CRISES[k].actions.every((a, i) => (a.game ? a.game.type : null) === games[k][i]));
     o.artKeys = ['lift-doors', 'lock-pick', 'pool-skim'].every(k => { const [c, a] = k.split('-'); return CRISES[c].actions.some(x => x.key === a && x.game); });
     // ---- safeguards and medals ----
@@ -2395,6 +2395,74 @@ const T = code => JP(run(`JSON.stringify((function(){ ${code} })())`));
   const bad = Object.entries(r).filter(([k, v]) => v !== true).map(([k, v]) => `${k} is ${JSON.stringify(v)}`);
   bad.forEach(b => fail('word and order games: ' + b));
   if (!bad.length) ok('word and order games: four questions per game, each with a best, middling and poor answer, answer length gives nothing away (best is longest, shortest or in between about a third of the time each), four puzzles per order game, no question twice running, hints, and the game statistics');
+}
+{
+  const r = JP(run(`(function () { const o = {};
+    const rand0 = Math.random, always = () => { Math.random = () => 0.001; }, never = () => { Math.random = () => 0.999; }, real = () => { Math.random = rand0; };
+    newGame('G', 'G'); S.money = 100000; S.day = 20; S.guests = []; S.rooms.forEach(x => { x.guestId = null; x.dirty = false; x.damaged = false; }); S.jobs = []; S.crises = []; S.warning = null; S.crisisLast = -99; S.news = [];
+    S.medals = {}; S.safeguards = {}; S.medalQueue = []; S.heroLog = []; S.crisisKinds = {}; S.stats.crisesSolved = 0; S.stats.crisesBlown = 0; S.unlocked.push('lift', 'pool', 'restaurant');
+    S.staff.forEach(x => { x.rota = Array(14).fill(true); x.used = 0; x.sickDays = 0; x.mood = 60; x.trait = 'Always on time'; x.skill = 3; });
+    const mt = S.staff.find(x => x.role === 'Maintenance');
+    // ---- word games have three levels: best, half-way, wrong ----
+    const plumber = CRISES.pipe.actions.find(a => a.key === 'plumber'), sp = crisisGameSpec(plumber, { skill: 3, trait: 'Always on time' });
+    const pick = score => sp.options.findIndex(x => x.score === score);
+    const j2 = crisisJudge(sp, pick(2)), j1 = crisisJudge(sp, pick(1)), j0 = crisisJudge(sp, pick(0));
+    o.judgeLevels = j2.success && j2.perfect && !j2.partial && !j2.harsh && j1.success && !j1.perfect && j1.partial && !j1.harsh && !j0.success && !j0.perfect && !j0.partial && j0.harsh;
+    const startPipe = () => { S.crises = []; S.crisisLast = -99; S.rooms.forEach(x => { x.damaged = false; }); S.staff.forEach(x => { x.used = 0; }); const c = startCrisis('pipe', false); c.skipNight = false; return c; };
+    S.guests = [{ id: 901, name: 'N One', roomId: S.rooms[0].id, price: 90, happiness: 70, left: 3, nights: 3, adults: 1, children: 0 }];
+    let c = startPipe(); const t0 = c.trouble; let r1 = doCrisisAction(c.id, 'plumber', undefined, { success: true, perfect: true });
+    const bestFix = c.fix, bestTrouble = c.trouble;
+    c = startPipe(); const r2 = doCrisisAction(c.id, 'plumber', undefined, { success: true, partial: true });
+    o.partial = r2.ok && r2.success && r2.partial && !r2.perfect && c.fix === Math.round(plumber.fix * CRISIS.partial) && c.trouble === t0 && /half worked/.test(r2.text) && bestFix === Math.round(plumber.fix * CRISIS.perfectBoost) && bestTrouble === t0 - Math.round(plumber.relief * CRISIS.perfectBoost);
+    S.guests[0].happiness = 70; c = startPipe(); const r3 = doCrisisAction(c.id, 'plumber', undefined, { success: false, harsh: true });
+    o.harsh = r3.ok && !r3.success && r3.harsh && c.fix === 0 && c.trouble === t0 + CRISIS.wrongTrouble && S.guests[0].happiness === 70 - CRISIS.wrongMood && /upset the guests/.test(r3.text) && CRISIS.wrongTrouble > plumber.risk;
+    S.guests[0].happiness = 70; c = startPipe(); const r4 = doCrisisAction(c.id, 'plumber', undefined, { success: false });
+    o.plainFail = !r4.harsh && c.trouble === t0 + plumber.risk && S.guests[0].happiness === 70;
+    // a half-way answer skips the extra effect (a review the guests write) that only a full success earns
+    S.crises = []; S.crisisLast = -99; S.reviews = []; S.guests = [];
+    const ask = CRISES.gossip.actions.find(a => a.key === 'ask'); const cg = startCrisis('gossip', false); const rv0 = S.reviews.length;
+    doCrisisAction(cg.id, 'ask', rc => rc, { success: true, partial: true }); o.partialNoExtra = S.reviews.length === rv0;
+    // ---- the maths questions: worked out by hand, with the random numbers fixed to the first choice each time ----
+    const expect = ['£20', '£15', '£4', '£360', '£44', '50ml', '2 chocolates', '4 slices', '18 items', '20 litres', '36 minutes', '82 keys', '16 bath towels', '6 full vases, 4 left over', '9:35 AM', '6:15 AM', '4 trips', '20 cars', 'No, 70 kg under the limit', '3 lifeguards'];
+    Math.random = () => 0; const first = MATHS.map(make => make().options.find(x => x.correct).t); real();
+    o.mathsByHand = MATHS.length === 20 && first.join('|') === expect.join('|') ? true : first.map((t, i) => t === expect[i] ? null : i + ': ' + t + ' (expected ' + expect[i] + ')').filter(Boolean);
+    // ---- and every question, drawn many times with the numbers at both ends and in between, is well formed ----
+    let bad = [];
+    const check = (label) => { MATHS.forEach((make, i) => { for (let n = 0; n < 40; n++) { const q = make(), texts = q.options.map(x => x.t), right = q.options.filter(x => x.correct);
+      if (q.options.length !== 4 || new Set(texts).size !== 4 || right.length !== 1 || !q.prompt || !q.explain || !q.tags.length || !q.tags.every(t => MATHS_TAGS.includes(t))) bad.push(label + ' #' + i + ' ' + JSON.stringify(texts));
+      const nums = right[0].t.match(/[0-9][0-9,:.]*/g) || []; if (!nums.every(t => q.explain.includes(t.replace(/,/g, '').replace(/^(\\d+):0(\\d)$/, '$1:0$2')) || q.explain.includes(t))) bad.push(label + ' #' + i + ' explanation misses ' + nums.join(' ') + ': ' + q.explain);
+      if (/\\b(he|she|his|her)\\b/i.test(q.prompt + q.explain)) bad.push(label + ' #' + i + ' pronoun'); } }); };
+    check('random'); Math.random = () => 0; check('low'); Math.random = () => 0.999; check('high'); real();
+    o.mathsWellFormed = bad.length === 0 ? true : bad.slice(0, 3);
+    // ---- the game itself: spec, hints, judging ----
+    const lollies = CRISES.pool.actions.find(a => a.key === 'lollies');
+    const m3 = crisisGameSpec(lollies, { skill: 3, trait: 'Always on time' }), m5 = crisisGameSpec(lollies, { skill: 5, trait: 'Always on time' }), m1 = crisisGameSpec(lollies, { skill: 1, trait: 'Always on time' }), mq = crisisGameSpec(lollies, { skill: 3, trait: 'Quick learner' });
+    o.mathsSpec = m3.type === 'maths' && m3.options.length === 4 && m3.options.filter(x => x.correct).length === 1 && m3.seconds === 20 && m3.hint === false && m5.seconds === 24 && m1.seconds === 16 && m5.options.length === 3 && m5.options.filter(x => x.correct).length === 1 && m5.hint === true && mq.helped === true && mq.seconds === 24 && mq.options.length === 3 && traitEdge({ trait: 'Quick learner' }) === 'maths' && !!TRAIT_HELP.maths;
+    const right = m3.options.findIndex(x => x.correct), wrong = m3.options.findIndex(x => !x.correct);
+    const q1 = crisisJudge(m3, { index: right, left: 14 }), q2 = crisisJudge(m3, { index: right, left: 5 }), q3 = crisisJudge(m3, { index: wrong, left: 18 }), q4 = crisisJudge(m3, { index: null, left: 0 });
+    o.mathsJudge = q1.success && q1.perfect && q2.success && !q2.perfect && !q3.success && !q3.perfect && !q3.harsh && !q4.success && crisisJudge(m3, { index: right, left: 10 }).perfect === true && crisisJudge(m3, { index: right, left: 9.9 }).perfect === false;
+    // never the same question twice running for the same action
+    let rep = 0, lastQ = null; for (let n = 0; n < 200; n++) { const q = crisisGameSpec(lollies, { skill: 3, trait: 'x' }); if (q.explain === lastQ && false) rep++; lastQ = q.prompt; }
+    const tags = ['rooms', 'time']; let sameTemplate = 0, lastI = null; for (let n = 0; n < 300; n++) { const q = mathsQuestion(tags); const i = mathsAsked.get(tags); if (i === lastI) sameTemplate++; lastI = i; if (!q.tags.some(t => tags.includes(t))) sameTemplate += 1000; }
+    o.mathsNoRepeat = sameTemplate === 0;
+    // ---- the seven converted actions ----
+    const conv = [['power', 'candles'], ['mice', 'restock'], ['roof', 'move'], ['gossip', 'tea'], ['lift', 'drinks'], ['pool', 'lollies'], ['lock', 'lobby']];
+    o.converted = conv.every(([k, a]) => { const x = CRISES[k].actions.find(y => y.key === a); return x.game && x.game.type === 'maths' && x.game.tags.length === 2 && x.game.tags.every(t => MATHS_TAGS.includes(t)) && x.odds === 0.7 && x.risk === 5 && x.bad; }) && CRISES.pipe.actions.find(a => a.key === 'treat').odds === null;
+    // a right answer still earns the effect (guests are happier); a wrong one costs Trouble and nothing else
+    S.crises = []; S.crisisLast = -99; S.guests = [{ id: 902, name: 'N Two', roomId: S.rooms[1].id, price: 90, happiness: 50, left: 3, nights: 3, adults: 1, children: 0 }]; S.staff.forEach(x => { x.used = 0; });
+    const cp = startCrisis('pool', false); cp.skipNight = false; const tp = cp.trouble; const cash = S.money;
+    const w1 = doCrisisAction(cp.id, 'lollies', undefined, { success: true, perfect: false });
+    o.mathsRight = w1.ok && w1.success && S.guests[0].happiness === 56 && cp.trouble === tp - lollies.relief && S.money === cash - lollies.cost;
+    S.staff.forEach(x => { x.used = 0; }); cp.acted = {}; S.guests[0].happiness = 50; const tp2 = cp.trouble; const w2 = doCrisisAction(cp.id, 'lollies', undefined, { success: false });
+    o.mathsWrong = !w2.success && S.guests[0].happiness === 50 && cp.trouble === tp2 + lollies.risk && /did not add up/.test(w2.text);
+    // ---- statistics keep the half-way answers apart ----
+    S.gameStats = {}; noteGame({ type: 'choice' }, { success: true, perfect: false, partial: true }); noteGame({ type: 'choice' }, { success: true, perfect: true }); noteGame({ type: 'choice' }, { success: false, perfect: false, harsh: true }); noteGame({ type: 'maths' }, { success: true, perfect: true }, { value: 6.5 });
+    o.statsLevels = S.gameStats.choice.plays === 3 && S.gameStats.choice.wins === 1 && S.gameStats.choice.partial === 1 && S.gameStats.choice.perfect === 1 && S.gameStats.maths.n === 1 && S.gameStats.maths.sum === 6.5;
+    real();
+    return o; })()`));
+  const bad = Object.entries(r).filter(([k, v]) => v !== true).map(([k, v]) => `${k} is ${JSON.stringify(v)}`);
+  bad.forEach(b => fail('three-level word games and maths: ' + b));
+  if (!bad.length) ok('three-level word games and maths: best, half-way and wrong answers (half progress and no relief, or ten Trouble and upset guests), twenty maths questions checked against answers worked out by hand and drawn many times for four distinct options, one right answer and a matching explanation, the game (time, hints, trait, perfect in the first half), seven actions converted, and the statistics');
 }
 
 /* ---------- guest faces ---------- */

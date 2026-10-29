@@ -8,7 +8,7 @@
 NAV.splice(NAV.findIndex(n => n[0] === 'incidents') + 1, 0, ['crisis', 'alert', 'Crisis', null, 'Hotel']);
 
 const pct = p => `${Math.round(p * 100)}%`;
-const GAME_NAMES = { timing: 'Timing game', tap: 'Tapping game', choice: 'Word game', order: 'Order game' };
+const GAME_NAMES = { timing: 'Timing game', tap: 'Tapping game', choice: 'Word game', order: 'Order game', maths: 'Maths game' };
 const crisisEffects = c => {
   const def = CRISES[c.key], out = [];
   const rooms = c.roomIds.map(id => roomById(id)).filter(r => r && r.damaged);
@@ -121,11 +121,11 @@ function heroesCard() {
 function gameStatsCard() {
   const rows = Object.keys(GAME_NAMES).filter(k => S.gameStats[k] && S.gameStats[k].plays).map(k => {
     const t = S.gameStats[k], avg = t.n ? t.sum / t.n : null;
-    const extra = k === 'timing' ? `${Math.round(avg)} ms from the middle on average` : k === 'tap' ? `${avg.toFixed(1)} taps a second on average` : '';
-    return `<tr><td>${GAME_NAMES[k]}${extra ? `<div class="small muted">${extra}</div>` : ''}</td><td>${t.plays}</td><td>${pct(t.wins / t.plays)}</td><td>${pct(t.perfect / t.plays)}</td></tr>`;
+    const extra = k === 'timing' ? `${Math.round(avg)} ms from the middle on average` : k === 'tap' ? `${avg.toFixed(1)} taps a second on average` : k === 'maths' ? `${avg.toFixed(1)} seconds to answer on average` : '';
+    return `<tr><td>${GAME_NAMES[k]}${extra ? `<div class="small muted">${extra}</div>` : ''}</td><td>${t.plays}</td><td>${pct(t.wins / t.plays)}</td><td>${k === 'choice' ? pct((t.partial || 0) / t.plays) : '-'}</td><td>${pct(t.perfect / t.plays)}</td></tr>`;
   });
   if (!rows.length) return '';
-  return `<div class="section-title"><h3>How the games are going</h3></div><div class="card"><div class="scroll-x"><table class="ledger"><tr><th>Game</th><th>Played</th><th>Won</th><th>Perfect</th></tr>${rows.join('')}</table></div><div class="small muted" style="margin-top:8px">Games left to chance are not counted. If most games are won easily, or hardly any are, this shows it.</div></div>`;
+  return `<div class="section-title"><h3>How the games are going</h3></div><div class="card"><div class="scroll-x"><table class="ledger"><tr><th>Game</th><th>Played</th><th>Won</th><th>Half</th><th>Perfect</th></tr>${rows.join('')}</table></div><div class="small muted" style="margin-top:8px">Games left to chance are not counted. If most games are won easily, or hardly any are, this shows it.</div></div>`;
 }
 function viewCrisis() {
   const quiet = !S.crises.length && !S.warning;
@@ -141,8 +141,8 @@ VIEWS.crisis = viewCrisis;
 function crisisOutcome(r) {
   if (!r.ok) { toast(r.error, 'bad'); commit(); return; }
   if (r.resolved) { sfx('award'); ui.modal = { type: 'crisisDone', name: r.name, reward: r.reward, text: r.text, hero: r.hero, medals: r.medals.map(m => m.name) }; commit(); return; }
-  sfx(r.perfect ? 'award' : r.success ? 'good' : 'bad');
-  toast(`${r.text}${r.perfect ? ' Perfect! Extra progress.' : ''}`, r.success ? 'good' : 'bad');
+  sfx(r.perfect ? 'award' : r.success && !r.partial ? 'good' : 'bad');
+  toast(`${r.text}${r.perfect ? ' Perfect! Extra progress.' : ''}`, r.success && !r.partial ? 'good' : 'bad');
   commit();
 }
 actions.crisisAct = d => crisisOutcome(doCrisisAction(Number(d.id), d.key, d.staff));

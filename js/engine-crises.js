@@ -12,7 +12,7 @@
    Nothing here injures anyone: these are mishaps with pipes, power, pests, weather, lifts, pools, locks and online gossip.
    S.crises is the list of live ones (at most CRISIS.maxActive). S.crisisLast is the day the last one began. */
 
-const CRISIS = { minDay: 8, maxActive: 1, cooldown: 6, baseChance: 0.07, escalate: 0.25, startTrouble: 40, resolveBonus: 8, warnChance: 0.6, warnPoints: 2, medalBonus: 100, preventBonus: 60, perfectBoost: 1.25, tapHits: 10, tapSeconds: 13, timingZone: 0.14, timingMs: 1000 };
+const CRISIS = { minDay: 8, maxActive: 1, cooldown: 6, baseChance: 0.07, escalate: 0.25, startTrouble: 40, resolveBonus: 8, warnChance: 0.6, warnPoints: 2, medalBonus: 100, preventBonus: 60, perfectBoost: 1.25, tapHits: 10, tapSeconds: 13, timingZone: 0.14, timingMs: 1000, partial: 0.5, wrongTrouble: 10, wrongMood: 4, mathsSeconds: 20, mathsPerfect: 0.5 };
 
 const crisisById = id => S.crises.find(c => c.id === id) || null;
 const crisisClosed = key => S.crises.some(c => (c.closes || []).includes(key));
@@ -64,8 +64,8 @@ function awardMedal(key) {
 
 /* ---------- What people are good at ---------- */
 /* A trait that suits one of the games: Calm under pressure steadies the timing games, Meticulous the tapping games, and so on. */
-const TRAIT_EDGE = { 'Calm under pressure': 'timing', 'Meticulous': 'tap', 'Great with guests': 'choice', 'Friendly and warm': 'choice', 'Very organised': 'order' };
-const TRAIT_HELP = { timing: 'a bigger target', tap: 'more time', choice: 'a hint', order: 'a hint' };
+const TRAIT_EDGE = { 'Calm under pressure': 'timing', 'Meticulous': 'tap', 'Great with guests': 'choice', 'Friendly and warm': 'choice', 'Very organised': 'order', 'Quick learner': 'maths' };
+const TRAIT_HELP = { timing: 'a bigger target', tap: 'more time', choice: 'a hint', order: 'a hint', maths: 'more time and a hint' };
 const traitEdge = s => (s && TRAIT_EDGE[s.trait]) || null;
 
 /* Every action: label and hint for the player, what it costs (cost in £, and `jobs` jobs from someone of `role`, a Manager can always stand in),
@@ -101,7 +101,7 @@ const CRISES = {
       { key: 'phone', label: 'Ring the power company', hint: 'Free, but they are very busy. Be clear and polite.', odds: 0.6, fix: 20, relief: 10, risk: 5,
         game: GAME_CHOICE(CRISIS_WORDS['power.phone']),
         ok: 'They promise an engineer and the power starts to come back.', bad: 'You waited in a queue and got nowhere.' },
-      { key: 'candles', label: 'Hand out candles and snacks', hint: 'Housekeeping brings light and biscuits to every floor.', cost: 60, role: 'Housekeeper', jobs: 1, odds: null, fix: 0, relief: 12, ok: 'Guests are cosy and a lot happier.', after: () => crisisMood(8) },
+      { key: 'candles', label: 'Hand out candles and snacks', hint: 'Housekeeping brings light and biscuits to every floor. Count out the right amounts: a quick maths question.', cost: 60, role: 'Housekeeper', jobs: 1, odds: 0.7, fix: 0, relief: 12, risk: 5, game: { type: 'maths', tags: ['rooms', 'food'] }, bad: 'The sums went wrong, so some floors got too little and had to wait.', ok: 'Guests are cosy and a lot happier.', after: () => crisisMood(8) },
       { key: 'barbecue', label: 'Cook dinner on the barbecue', hint: 'If it works, the restaurant can open tonight. Put the steps in the right order.', cost: 150, role: 'Chef', jobs: 1, odds: 0.75, fix: 15, relief: 8, risk: 6,
         game: { type: 'order', variants: CRISIS_ORDERS['power.barbecue'] },
         ok: 'Dinner is served by torchlight and everyone loves it.', bad: 'The barbecue would not light.', after: c => { c.closes = []; crisisMood(6); } }
@@ -118,7 +118,7 @@ const CRISES = {
       { key: 'pest', label: 'Call pest control', hint: 'The experts. What you tell them helps them find the way in.', cost: 300, odds: 0.9, fix: 40, relief: 20, risk: 5,
         game: GAME_CHOICE(CRISIS_WORDS['mice.pest']),
         ok: 'Pest control found the way in and blocked it up.', bad: 'They could not come until tomorrow.' },
-      { key: 'restock', label: 'Throw out and restock the food', hint: 'Better safe than sorry.', cost: 200, odds: null, fix: 10, relief: 10, ok: 'Fresh food is in and the old stock is gone.' },
+      { key: 'restock', label: 'Throw out and restock the food', hint: 'Better safe than sorry. Work out how much to order: a quick maths question.', cost: 200, odds: 0.7, fix: 10, relief: 10, risk: 5, game: { type: 'maths', tags: ['food', 'rooms'] }, bad: 'The order was wrong and some of the food had to be sent back.', ok: 'Fresh food is in and the old stock is gone.' },
       { key: 'honest', label: 'Tell guests honestly', hint: 'An honest note on the desk. Stops the bad reviews, and guests respect it.', odds: null, fix: 5, relief: 10, ok: 'Guests appreciated being told the truth.', after: c => { c.reviewHit = 0; crisisMood(3); } }
     ] },
   roof: { name: 'Storm damage', w: 2, rooms: 2, roomType: 'Ocean View', repairCost: 300, growth: 10, mood: 3, fine: 450, reward: 350, reviewText: 'A leaking roof and no real help from the staff.', staffVoice: 'Maintenance',
@@ -134,7 +134,7 @@ const CRISES = {
         game: GAME_CHOICE(CRISIS_WORDS['roof.roofer']),
         ok: 'The roofer replaced the tiles.', bad: 'The roofer could not get up in the weather.' },
       { key: 'dry', label: 'Dry and re-make the rooms', hint: 'Two jobs for housekeeping. Every wet patch takes about ten taps and fades a little with each one, so be quick.', role: 'Housekeeper', jobs: 2, odds: 0.8, fix: 20, relief: 10, risk: 8, game: { type: 'tap', patches: 6, what: 'Tap each wet patch ten times to dry it.' }, ok: 'The rooms are dry and fresh again.', bad: 'It is still damp in there.', after: c => crisisRepair(c, 1) },
-      { key: 'move', label: 'Move guests to dry rooms', hint: 'A bit of effort, and the guests are happy to move.', odds: null, fix: 0, relief: 8, ok: 'Everyone is settled in dry rooms.', after: () => crisisMood(4) }
+      { key: 'move', label: 'Move guests to dry rooms', hint: 'A bit of effort, and the guests are happy to move. Count the rooms and the time it takes: a quick maths question.', odds: 0.7, fix: 0, relief: 8, risk: 5, game: { type: 'maths', tags: ['rooms', 'time'] }, bad: 'There was a muddle over the rooms and the move took far longer than it should.', ok: 'Everyone is settled in dry rooms.', after: () => crisisMood(4) }
     ] },
   gossip: { name: 'Bad reviews online', w: 2, rooms: 0, reviewHit: 1, growth: 9, mood: 2, fine: 350, reward: 300, reviewText: 'Not what the nasty posts said, but not great either.', staffVoice: 'Receptionist',
     can: () => S.reviews.length >= 3,
@@ -147,7 +147,7 @@ const CRISES = {
       { key: 'reply', label: 'Reply politely to your reviews', hint: 'Kind, careful replies. A skilled receptionist does this much better. Two jobs.', role: 'Receptionist', jobs: 2, odds: 0.75, fix: 25, relief: 15, risk: 8,
         game: GAME_CHOICE(CRISIS_WORDS['gossip.reply']),
         ok: 'The replies were kind and people noticed.', bad: 'The replies came across badly.' },
-      { key: 'tea', label: 'Invite unhappy guests to a free tea', hint: 'Turn grumbles into smiles.', cost: 120, odds: null, fix: 10, relief: 10, ok: 'The tea party went down a treat.', after: () => crisisMood(5) },
+      { key: 'tea', label: 'Invite unhappy guests to a free tea', hint: 'Turn grumbles into smiles. Get the bill and the amounts right: a quick maths question.', cost: 120, odds: 0.7, fix: 10, relief: 10, risk: 5, game: { type: 'maths', tags: ['money', 'food'] }, bad: 'The sums were wrong and the tea party was a muddle.', ok: 'The tea party went down a treat.', after: () => crisisMood(5) },
       { key: 'ask', label: 'Ask happy guests to write a review', hint: 'It may or may not work, but a glowing review helps a lot. Ask kindly.', role: 'Receptionist', jobs: 1, odds: 0.65, fix: 30, relief: 10, risk: 5,
         game: GAME_CHOICE(CRISIS_WORDS['gossip.ask']),
         ok: 'A guest wrote a lovely review.', bad: 'Nobody got round to it.', after: () => addReview(drawPerson().name, 5, 'Staying here was wonderful, and the staff could not do enough for us.') },
@@ -168,7 +168,7 @@ const CRISES = {
       { key: 'talk', label: 'Talk to the guests inside', hint: 'Keep them calm and chatting. What you say matters.', role: 'Receptionist', jobs: 1, odds: 0.75, fix: 20, relief: 14, risk: 6,
         game: GAME_CHOICE(CRISIS_WORDS['lift.talk']),
         ok: 'The guests calmed down and even started to laugh.', bad: 'The guests were more worried than ever.' },
-      { key: 'drinks', label: 'Send cold drinks and sweets to the stairs', hint: 'Cheer up everyone who is waiting.', cost: 60, odds: null, fix: 0, relief: 10, ok: 'Cold drinks and sweets helped everyone wait patiently.', after: () => crisisMood(6) }
+      { key: 'drinks', label: 'Send cold drinks and sweets to the stairs', hint: 'Cheer up everyone who is waiting. Work out how much to send: a quick maths question.', cost: 60, odds: 0.7, fix: 0, relief: 10, risk: 5, game: { type: 'maths', tags: ['food', 'concierge'] }, bad: 'There were not enough drinks to go round.', ok: 'Cold drinks and sweets helped everyone wait patiently.', after: () => crisisMood(6) }
     ] },
   pool: { name: 'Murky pool', w: 2, rooms: 0, closes: ['pool'], growth: 10, mood: 3, fine: 400, reward: 330, reviewText: 'The pool was green and closed. It looked nothing like the photos.', staffVoice: 'Maintenance',
     can: () => hasFacility('pool'),
@@ -185,7 +185,7 @@ const CRISES = {
       { key: 'specialist', label: 'Call the pool specialist', hint: 'Costly, but they know pools. Tell them what you see.', cost: 300, odds: 0.9, fix: 35, relief: 20, risk: 5,
         game: GAME_CHOICE(CRISIS_WORDS['pool.specialist']),
         ok: 'The specialist cleaned the filter and put the water right.', bad: 'The specialist could only come tomorrow.' },
-      { key: 'lollies', label: 'Hand out ice lollies on the terrace', hint: 'Sunshine, ice lollies and a smile. Cheers everyone up.', cost: 70, odds: null, fix: 0, relief: 10, ok: 'The terrace was full of happy guests with ice lollies.', after: () => crisisMood(6) }
+      { key: 'lollies', label: 'Hand out ice lollies on the terrace', hint: 'Sunshine, ice lollies and a smile. Get the numbers right: a quick maths question.', cost: 70, odds: 0.7, fix: 0, relief: 10, risk: 5, game: { type: 'maths', tags: ['pool', 'money'] }, bad: 'The numbers did not add up and the lollies ran out.', ok: 'The terrace was full of happy guests with ice lollies.', after: () => crisisMood(6) }
     ] },
   lock: { name: 'Stuck room door', w: 2, rooms: 1, repairCost: 120, growth: 9, mood: 3, fine: 350, reward: 280, reviewText: 'The door to our room jammed and it took ages for anyone to help.', staffVoice: 'Maintenance',
     can: () => crisisSpareRooms() >= 4,
@@ -202,7 +202,7 @@ const CRISES = {
       { key: 'keys', label: 'Find the right key', hint: 'The master key lives in the key cabinet. Put the steps in the right order.', role: 'Receptionist', jobs: 1, odds: 0.75, fix: 20, relief: 10, risk: 6,
         game: { type: 'order', variants: CRISIS_ORDERS['lock.keys'] },
         ok: 'The master key turned and the door opened.', bad: 'It was the wrong key, and now the lock is stiffer.' },
-      { key: 'lobby', label: 'Look after the waiting guest', hint: 'A comfy chair and a hot drink while they wait.', cost: 40, odds: null, fix: 0, relief: 10, ok: 'The guest enjoyed a hot drink and a comfy chair in the lobby.', after: () => crisisMood(6) }
+      { key: 'lobby', label: 'Look after the waiting guest', hint: 'A comfy chair and a hot drink while they wait. Keep track of the time: a quick maths question.', cost: 40, odds: 0.7, fix: 0, relief: 10, risk: 5, game: { type: 'maths', tags: ['time', 'concierge'] }, bad: 'The timings went wrong and the guest waited far longer than they should.', ok: 'The guest enjoyed a hot drink and a comfy chair in the lobby.', after: () => crisisMood(6) }
     ] }
 };
 /* A notice for the guests, in the player's own words, is offered in every crisis. Nothing written is marked. */
@@ -380,25 +380,33 @@ function crisisGameSpec(a, staff) {
     const v = nextVariant(a.game), hint = skill >= 4 || helped;
     return Object.assign(base, { prompt: v.prompt, steps: crisisShuffle(v.steps.map((t, i) => ({ t, i }))), count: v.steps.length, hint });   // with experience the first step is shown
   }
+  if (type === 'maths') {
+    const q = mathsQuestion(a.game.tags), hint = skill >= 4 || helped;
+    const options = q.options.map(o => ({ t: o.t, correct: o.correct }));
+    if (hint) options.splice(options.findIndex(o => !o.correct), 1);   // experience rules out one wrong answer
+    return Object.assign(base, { prompt: q.prompt, options, explain: q.explain, hint, seconds: Math.round((CRISIS.mathsSeconds + 2 * (skill - 3) + (helped ? 4 : 0)) * 10) / 10 });
+  }
   return null;
 }
 /* Turns what the player did into a result. answer: timing = where the marker was (0 to 1); tap = { tapped, left } seconds left; choice = the
-   index picked in spec.options; order = how many wrong taps. Returns { success, perfect }. */
+   index picked in spec.options; order = how many wrong taps; maths = { index picked (null for none), seconds left }. Returns { success, perfect } and, for a word game, { partial } (half-way answer) or { harsh } (wrong and upsetting). */
 function crisisJudge(spec, answer) {
   if (spec.type === 'timing') { const d = Math.abs(Number(answer) - spec.center); return { success: d <= spec.zone / 2, perfect: d <= spec.zone * 0.15 }; }
   if (spec.type === 'tap') { const ok = answer.tapped >= spec.patches; return { success: ok, perfect: ok && answer.left >= spec.seconds * 0.25 }; }
-  if (spec.type === 'choice') { const o = spec.options[Number(answer)]; return { success: !!o && o.score >= 1, perfect: !!o && o.score === 2 }; }
+  if (spec.type === 'choice') { const o = spec.options[Number(answer)]; return { success: !!o && o.score >= 1, perfect: !!o && o.score === 2, partial: !!o && o.score === 1, harsh: !o || o.score === 0 }; }   // best, half-way, or wrong and upsetting
   if (spec.type === 'order') { const m = Number(answer); return { success: m <= 1, perfect: m === 0 }; }
+  if (spec.type === 'maths') { const o = answer && answer.index !== null && answer.index !== undefined ? spec.options[Number(answer.index)] : null, ok = !!o && o.correct; return { success: ok, perfect: ok && answer.left >= spec.seconds * CRISIS.mathsPerfect }; }   // an answer in the first half of the time is perfect; no answer is wrong
   return { success: false, perfect: false };
 }
 
 /* What the games are like to play, kept in the save for tuning and shown on the Crisis page: for each kind of game how often it was played,
-   won and played perfectly, and (when the game measures it) how far from the middle the timing was in milliseconds or how many taps a
+   won (a half-way answer is counted apart) and played perfectly, and (when the game measures it) how far from the middle the timing was in milliseconds or how many taps a
    second. `extra.value` is that measurement. Games left to chance are not counted. */
 function noteGame(spec, result, extra) {
   const t = S.gameStats[spec.type] || (S.gameStats[spec.type] = { plays: 0, wins: 0, perfect: 0, sum: 0, n: 0 });
   t.plays++;
-  if (result.success) t.wins++;
+  if (result.success && !result.partial) t.wins++;
+  if (result.partial) t.partial = (t.partial || 0) + 1;
   if (result.perfect) t.perfect++;
   if (extra && Number.isFinite(extra.value)) { t.sum += extra.value; t.n++; }
 }
@@ -438,24 +446,27 @@ function doCrisisAction(id, key, staffId, result, text) {
   c.acted[a.key] = S.day;
   const played = !!result && typeof result === 'object';
   const success = played ? !!result.success : Math.random() < crisisOdds(a, who);
-  const perfect = played && success && !!result.perfect;
+  const perfect = played && success && !!result.perfect, partial = played && success && !!result.partial, harsh = played && !success && !!result.harsh;
   const boost = perfect ? CRISIS.perfectBoost : 1;
   let text2;
   if (success) {
-    let fix = Math.round((a.fix || 0) * boost) + (a.write && note.length >= 40 ? 3 : 0) + (who && who.trait === 'Hard-working' && a.fix ? 5 : 0);
-    c.fix = clamp(c.fix + fix, 0, 100); c.trouble = clamp(c.trouble - Math.round((a.relief || 0) * boost), 0, 100);
-    if (a.after) a.after(c);
-    text2 = a.ok;
+    // a half-way answer (word games) gives half the progress, no relief from Trouble and none of the extra effects
+    let fix = Math.round((a.fix || 0) * boost * (partial ? CRISIS.partial : 1)) + (a.write && note.length >= 40 ? 3 : 0) + (who && who.trait === 'Hard-working' && a.fix ? 5 : 0);
+    c.fix = clamp(c.fix + fix, 0, 100);
+    if (!partial) { c.trouble = clamp(c.trouble - Math.round((a.relief || 0) * boost), 0, 100); if (a.after) a.after(c); }
+    text2 = partial ? 'That helped a little, but it was not the best thing to say, so it only half worked.' : a.ok;
   } else {
-    c.trouble = clamp(c.trouble + (a.risk || 0), 0, 100);
-    text2 = a.bad;
+    // a wrong answer in a word game makes things worse than an ordinary failure: more Trouble, and the guests are upset
+    c.trouble = clamp(c.trouble + (harsh ? CRISIS.wrongTrouble : (a.risk || 0)), 0, 100);
+    if (harsh) crisisMood(-CRISIS.wrongMood);
+    text2 = harsh ? `${a.bad} That was the wrong thing to say, and it upset the guests.` : a.bad;
   }
   if (a.write) { c.notice = note; S.stats.notices = (S.stats.notices || 0) + 1; if (S.stats.notices >= 5) awardMedal('wordsmith'); }
-  if (who) { const pts = (success ? (perfect ? 3 : 2) : 1) * (who.trait === 'Quick learner' ? 2 : 1); c.credit[who.id] = (c.credit[who.id] || 0) + pts; }
+  if (who) { const pts = (success && !partial ? (perfect ? 3 : 2) : 1) * (who.trait === 'Quick learner' ? 2 : 1); c.credit[who.id] = (c.credit[who.id] || 0) + pts; }
   if (perfect) { S.stats.perfect = (S.stats.perfect || 0) + 1; awardMedal('bullseye'); }
   c.log.push({ day: S.day, text: `${a.label}: ${text2}`, perfect });
   c.log = c.log.slice(-12);
-  const out = { ok: true, success, perfect, text: text2, name: def.name, resolved: false, played };
+  const out = { ok: true, success, perfect, partial, harsh, text: text2, name: def.name, resolved: false, played };
   if (c.fix >= 100) Object.assign(out, resolveCrisis(c));
   return out;
 }

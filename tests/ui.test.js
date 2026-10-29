@@ -1150,6 +1150,37 @@ const assert = (c, m) => { if (!c) { failed++; console.error('FAIL:', m); } else
     await page.evaluate(() => { actions.nav({ view: 'crisis' }); });
     const gs = await page.locator('.content').innerText();
     assert(/How the games are going/.test(gs) && /Tapping game/.test(gs) && /taps a second on average/.test(gs) && /ms from the middle on average/.test(gs), 'the Crisis page shows how the games are going');
+    // the maths game, played through the real screen: a right answer, a wrong one, and running out of time
+    await page.evaluate(() => { S.unlocked.push('pool'); S.crises = []; S.crisisLast = -99; S.warning = null; S.rooms.forEach(r => { r.damaged = false; }); S.staff.forEach(x => { x.used = 0; x.trait = 'Always on time'; x.skill = 3; }); S.money = 50000; startCrisis('pool', false); S.crises[0].seen = true; S.crises[0].skipNight = false; S.guests.forEach(g => { g.happiness = 50; }); actions.nav({ view: 'crisis' }); });
+    assert(await page.locator('.crisis-card [data-act="crisisPlay"][data-key="lollies"]').count() === 1 && (await page.locator('.crisis-card').innerText()).includes('Maths game'), 'a number-based action says it is a maths game');
+    const t0 = await page.evaluate(() => S.crises[0].trouble), mood0 = await page.evaluate(() => S.guests.length ? S.guests[0].happiness : 0);
+    await page.click('.crisis-card [data-act="crisisPlay"][data-key="lollies"]'); await page.waitForTimeout(400);
+    assert(await page.locator('.modal .chip:text-is("Maths game")').count() === 1 && await page.locator('.modal [data-act="gameChoice"]').count() === 4 && (await page.locator('.modal #tapTime').innerText()).includes('seconds left'), 'the maths game shows a question, four answers and a clock');
+    const promptA = await page.evaluate(() => ui.game.spec.prompt); await page.click('.modal [data-act="crisisCancel"]'); await page.waitForTimeout(150);
+    await page.click('.crisis-card [data-act="crisisPlay"][data-key="lollies"]'); await page.waitForTimeout(400);
+    assert(await page.evaluate(p => ui.game.spec.prompt === p, promptA), 'closing and reopening a game gives the same question, so it cannot be re-rolled');
+    await page.evaluate(() => { ui.game.left = ui.game.spec.seconds; });
+    const rightIdx = await page.evaluate(() => ui.game.spec.options.findIndex(o => o.correct));
+    await page.click(`.modal [data-act="gameChoice"][data-i="${rightIdx}"]`); await page.waitForTimeout(200);
+    assert((await page.locator('.modal').innerText()).includes('The right answer') && (await page.locator('.modal').innerText()).includes('The working:') && await page.locator('.modal [data-act="gameDone"]').count() === 1, 'a right answer is marked and the working is shown');
+    assert(await page.locator('.modal [data-act="crisisSkip"]').count() === 0 && await page.locator('.modal [data-act="crisisCancel"]').count() === 0, 'once an answer is picked there is only Continue, so a bad result cannot be swapped for the dice');
+    await page.click('.modal [data-act="gameDone"]'); await page.waitForTimeout(300);
+    assert(await page.evaluate(([t0]) => ui.game === null && S.crises[0].acted.lollies === S.day && S.crises[0].trouble < t0, [t0]), 'a right answer finishes the game and eases Trouble');
+    await page.evaluate(() => { S.crises[0].acted = {}; S.staff.forEach(x => { x.used = 0; }); render(); });
+    const t1 = await page.evaluate(() => S.crises[0].trouble);
+    await page.click('.crisis-card [data-act="crisisPlay"][data-key="lollies"]'); await page.waitForTimeout(400);
+    const wrongIdx = await page.evaluate(() => ui.game.spec.options.findIndex(o => !o.correct));
+    await page.click(`.modal [data-act="gameChoice"][data-i="${wrongIdx}"]`); await page.waitForTimeout(200);
+    assert((await page.locator('.modal').innerText()).includes('Not quite') && (await page.locator('.modal').innerText()).includes('The right answer') && (await page.locator('.modal').innerText()).includes('The working:'), 'a wrong answer shows the right one and the working');
+    await page.click('.modal [data-act="gameDone"]'); await page.waitForTimeout(300);
+    assert(await page.evaluate(([t1]) => S.crises[0].trouble === t1 + CRISES.pool.actions.find(a => a.key === 'lollies').risk, [t1]), 'a wrong answer costs a little Trouble');
+    await page.evaluate(() => { S.crises[0].acted = {}; S.staff.forEach(x => { x.used = 0; }); render(); });
+    const t2 = await page.evaluate(() => S.crises[0].trouble);
+    await page.click('.crisis-card [data-act="crisisPlay"][data-key="lollies"]'); await page.waitForTimeout(400);
+    await page.evaluate(() => { ui.game.left = 0.2; }); await page.waitForTimeout(700);
+    assert(await page.evaluate(([t2]) => ui.game === null && S.crises[0].trouble > t2 && S.gameStats.maths.plays >= 3, [t2]), 'running out of time counts as a wrong answer');
+    assert(await page.evaluate(() => S.gameStats.maths.plays === 3 && S.gameStats.maths.wins === 1 && S.gameStats.maths.n === 3), 'the maths games are counted');
+    await page.evaluate(() => { S.crises = []; S.crisisLast = -99; S.warning = null; S.rooms.forEach(r => { r.damaged = false; }); S.staff.forEach(x => { x.used = 0; }); startCrisis('pipe', false); S.crises[0].seen = true; actions.nav({ view: 'crisis' }); });   // back to the burst pipe for the checks that follow
     await page.click('.crisis-card [data-act="crisisPlay"][data-key="plumber"]'); await page.waitForTimeout(400);
     assert(await page.locator('.modal .gstage.banner .gbg').count() === 1, 'a word game shows its picture as a banner');
     await page.click('.modal [data-act="crisisCancel"]'); await page.waitForTimeout(150);
