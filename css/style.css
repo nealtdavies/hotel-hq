@@ -491,9 +491,34 @@ table.calendar th,table.calendar td{padding:3px 2px}
 .opt .why{display:block;margin-top:4px;font-weight:600}
 .opt .why.good{color:var(--good)}
 .opt .why.warn{color:var(--warn)}
-.tg-bar{position:relative;height:44px;margin:14px 0 18px;border-radius:99px;background:var(--surface2);overflow:hidden}
-.tg-zone{position:absolute;top:0;bottom:0;background:var(--good);opacity:.55}
-.tg-mark{position:absolute;top:-2px;bottom:-2px;width:8px;margin-left:-4px;border-radius:4px;background:var(--text)}
+/* The timing control: a dark glass console (js/ui-crisisgames.js, timingConsole). The rail sits inside the rounded ends of the track, so the orb and the zone never overhang it. */
+.tg-console{position:relative;margin:14px 0 6px;padding:20px 18px 18px;border-radius:22px;background:linear-gradient(180deg,#2a2823,#1b1a17);box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 10px 26px rgba(27,26,23,.32);color:#fff}
+.tg-rail{position:relative;height:30px;margin:0 13px}
+.tg-rail::before{content:'';position:absolute;inset:0 -13px;border-radius:99px;background:linear-gradient(180deg,#0f0e0c,#25231f);box-shadow:inset 0 3px 6px rgba(0,0,0,.7),0 1px 0 rgba(255,255,255,.07)}
+.tg-zone{position:absolute;top:3px;bottom:3px;border-radius:99px;background:linear-gradient(180deg,#7df0b8,#2fcf85 55%,#1c9d62);box-shadow:0 0 12px rgba(47,207,133,.55),inset 0 1px 0 rgba(255,255,255,.55);opacity:.9;transition:box-shadow .12s,opacity .12s}
+.tg-zone.lit{opacity:1;box-shadow:0 0 22px rgba(95,240,170,.95),inset 0 1px 0 rgba(255,255,255,.7)}
+.tg-trail{position:absolute;top:50%;height:10px;margin-top:-5px;border-radius:99px;background:linear-gradient(90deg,rgba(255,235,190,0),rgba(255,235,190,.5));pointer-events:none}
+.tg-trail.rev{background:linear-gradient(270deg,rgba(255,235,190,0),rgba(255,235,190,.5))}
+.tg-orb{position:absolute;top:50%;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,#f3e6c7 45%,#d9b873);box-shadow:0 0 14px rgba(255,235,190,.9),0 2px 4px rgba(0,0,0,.5)}
+.tg-orb.hot{background:radial-gradient(circle at 35% 30%,#fff,#d6ffe9 45%,#6fe3a8);box-shadow:0 0 20px rgba(120,255,190,1),0 2px 4px rgba(0,0,0,.5)}
+.tg-orb.bad{background:radial-gradient(circle at 35% 30%,#fff,#ffd9d2 45%,#ff7a66);box-shadow:0 0 18px rgba(255,110,90,.95),0 2px 4px rgba(0,0,0,.5)}
+.tg-ticks{display:flex;justify-content:space-between;margin:7px 13px 0;height:8px}
+.tg-ticks i{width:1px;height:5px;background:rgba(255,255,255,.22)}.tg-ticks i:nth-child(5n+1){height:8px;background:rgba(255,255,255,.4)}
+.tg-result{min-height:1.5em;margin:8px 0 0;text-align:center;font:600 .95rem var(--serif);letter-spacing:.04em;color:#bdf5d8}
+.tg-console.fb-miss .tg-result{color:#ffb4a8}.tg-console.fb-perfect .tg-result{color:#ffe9a8}
+.tg-stop{display:block;margin:6px auto 0;width:78%;padding:15px 0;border:0;border-radius:99px;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;font:700 1.05rem var(--serif);letter-spacing:.16em;color:#fff;background:linear-gradient(180deg,#d2a853,#8c6a2f);box-shadow:0 5px 0 #5a421a,0 10px 18px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.5);text-shadow:0 1px 2px rgba(0,0,0,.5);transition:transform .05s,box-shadow .12s}
+.tg-stop.hot{box-shadow:0 5px 0 #5a421a,0 0 0 3px rgba(47,207,133,.6),0 0 22px rgba(47,207,133,.65),inset 0 1px 0 rgba(255,255,255,.5)}
+.tg-stop:active:not(:disabled){transform:translateY(3px);box-shadow:0 2px 0 #5a421a,0 5px 10px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.5)}
+.tg-stop:disabled{cursor:default;filter:saturate(.7) brightness(.92)}
+.tg-burst{position:absolute;left:50%;top:50%;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;border:3px solid #9dffcf;pointer-events:none;animation:tgBurst .7s ease-out forwards}
+.tg-burst.perfect{border-color:#ffe29a;animation-duration:.9s}
+@keyframes tgBurst{from{transform:scale(1);opacity:.95}to{transform:scale(4.2);opacity:0}}
+@keyframes tgShake{0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(5px)}60%{transform:translateX(-3px)}80%{transform:translateX(2px)}}
+.tg-console.fb-miss{animation:tgShake .35s ease-out}
+.tg-console.fb-perfect .tg-rail::before,.tg-console.fb-hit .tg-rail::before{box-shadow:inset 0 3px 6px rgba(0,0,0,.7),0 0 18px rgba(95,240,170,.35)}
+@media (prefers-reduced-motion:reduce){.tg-burst,.tg-console.fb-miss{animation:none}.tg-burst{opacity:.8}}
+/* short screens (older and smaller phones): a tighter console, so STOP is never pushed to the bottom edge */
+@media (max-height:700px){.tg-console{margin-top:8px;padding:14px 16px 12px}.tg-rail{height:26px}.tg-orb{width:22px;height:22px;margin:-11px 0 0 -11px}.tg-ticks{margin-top:5px}.tg-result{min-height:1.2em;margin-top:5px;font-size:.88rem}.tg-stop{margin-top:3px;padding:12px 0}}
 .patches{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:10px 0;min-height:120px}
 .patch{height:54px;border:0;border-radius:50% 40% 55% 45%;background:var(--accent);opacity:.85;cursor:pointer;margin:calc(var(--j) * 1px) 0 0 calc(var(--j) * 2px);touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;transition:opacity .08s linear}
 .patch.gone{background:transparent;cursor:default}

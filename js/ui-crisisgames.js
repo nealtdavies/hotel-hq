@@ -6,7 +6,7 @@
    plays, or if she would rather not, she can leave it to chance from inside the pop-up. The rules and the judging are in engine-crises.js;
    this file only draws the games and passes what she did to crisisJudge. ui.game holds the game being played. */
 
-const GAME_HELP = { timing: 'Press Stop when the moving marker is inside the green zone. The middle is a perfect hit.', tap: 'Tap each patch again and again. It fades a little with every tap and is gone after about ten. Clear them all before the time runs out.', choice: 'Read each answer, then pick the best one. A weaker answer only half works, and a wrong one makes things worse.', order: 'Tap the steps in the order they should happen.', maths: 'A quick sum comes up as you do this job. Work out the answer and pick it before the time runs out. An answer in the first half of the time is perfect.' };
+const GAME_HELP = { timing: 'Press STOP when the glowing ball is inside the green zone. The middle is a perfect hit.', tap: 'Tap each patch again and again. It fades a little with every tap and is gone after about ten. Clear them all before the time runs out.', choice: 'Read each answer, then pick the best one. A weaker answer only half works, and a wrong one makes things worse.', order: 'Tap the steps in the order they should happen.', maths: 'A quick sum comes up as you do this job. Work out the answer and pick it before the time runs out. An answer in the first half of the time is perfect.' };
 /* Optional artwork, in assets/games (see GAME-ART.md). Each game may have a scene behind it (<crisis>-<action>-bg.jpg), the moving timing games
    a set of pictures that swap as the marker moves (-f1.webp, -f2.webp and so on, the middle one is the "just right" pose), and the tapping games
    a transparent picture for each patch (patch-wet.webp, patch-crumb.webp, patch-leaf.webp). Whatever is missing is simply not drawn, so every game works with no
@@ -47,28 +47,40 @@ actions.crisisPlay = async d => {
   openModal({ type: 'crisisGame' });
 };
 /* The game is over: hand the result to the engine. */
-function finishCrisisGame(result, extra) {
-  const g = ui.game;
-  if (!g) return;
+function finishCrisisGame(result, extra, game) {
+  const g = game || ui.game;
+  if (!g || g.finished) return;
+  g.finished = true;   // a game is handed over once, whichever of the timer or a second press gets there first
   noteGame(g.spec, result, extra);
-  ui.game = null; ui.modal = null;
+  if (ui.game === g) { ui.game = null; ui.modal = null; }
   crisisOutcome(doCrisisAction(g.id, g.key, g.staffId, result));
 }
 actions.crisisSkip = () => {   // leave it to chance
   const g = ui.game;
-  if (!g) return;
+  if (!g || g.stopping) return;
   ui.game = null; ui.modal = null;
   crisisOutcome(doCrisisAction(g.id, g.key, g.staffId));
 };
-actions.crisisCancel = () => { ui.game = null; closeModal(); };
+actions.crisisCancel = () => { if (ui.game && ui.game.stopping) return; ui.game = null; closeModal(); };
 
 /* ---------- Drawing ---------- */
 const frameIndex = (g, n) => Math.round(g.pos * (n - 1));
+/* The timing control: a dark glass console. A glowing orb slides along a track (with a short trail behind it), the green zone glows,
+   and the gold STOP button lights up while the orb is inside the zone. After STOP the console shows what happened (g.fb is 'perfect',
+   'hit' or 'miss'). The orb and zone are drawn inside the track's rounded ends, so 0 and 1 are the two ends of the inner rail. */
+const TG_LABELS = { perfect: 'Perfect!', hit: 'In the zone!', miss: 'Missed it' };
+function timingConsole(g) {
+  const sp = g.spec, inZone = Math.abs(g.pos - sp.center) <= sp.zone / 2, hot = g.fb ? g.fb !== 'miss' : inZone;
+  return `<div class="tg-console ${g.fb ? 'fb-' + g.fb : ''}" id="tgConsole"><div class="tg-rail" aria-hidden="true"><div class="tg-zone ${hot ? 'lit' : ''}" id="tgZone" style="left:${((sp.center - sp.zone / 2) * 100).toFixed(2)}%;width:${(sp.zone * 100).toFixed(2)}%"></div>
+    <div class="tg-trail" id="tgTrail"></div><div class="tg-orb ${hot ? 'hot' : ''} ${g.fb === 'miss' ? 'bad' : ''}" id="tgMark" style="left:${(g.pos * 100).toFixed(2)}%">${g.fb && g.fb !== 'miss' ? `<span class="tg-burst ${g.fb}"></span>` : ''}</div></div>
+    <div class="tg-ticks" aria-hidden="true">${'<i></i>'.repeat(21)}</div>
+    <div class="tg-result" aria-live="polite">${g.fb ? TG_LABELS[g.fb] : ''}</div>
+    <button class="tg-stop ${hot ? 'hot' : ''}" data-act="tgStop" ${g.stopping ? 'disabled' : 'data-autofocus'}>STOP</button></div>`;
+}
 function gameBody(g) {
   const sp = g.spec, art = g.art || { bg: null, patch: null, frames: [] };
   const banner = art.bg ? `<div class="gstage banner"${fxAttr(art)}>${artImg(art.bg, 'gbg')}</div>` : '';
-  if (sp.type === 'timing') return `${art.frames.length ? `<div class="gstage"${fxAttr(art)}>${art.bg ? artImg(art.bg, 'gbg') : ''}${art.frames.map((src, i) => artImg(src, `gframe${i === frameIndex(g, art.frames.length) ? ' on' : ''}`)).join('')}</div>` : banner}<div class="tg-bar" aria-hidden="true"><div class="tg-zone" style="left:${((sp.center - sp.zone / 2) * 100).toFixed(2)}%;width:${(sp.zone * 100).toFixed(2)}%"></div><div class="tg-mark" id="tgMark" style="left:${(g.pos * 100).toFixed(2)}%"></div></div>
-    <div class="actions" style="justify-content:center"><button class="btn primary big" data-act="tgStop" data-autofocus>Stop!</button></div>`;
+  if (sp.type === 'timing') return `${art.frames.length ? `<div class="gstage"${fxAttr(art)}>${art.bg ? artImg(art.bg, 'gbg') : ''}${art.frames.map((src, i) => artImg(src, `gframe${i === frameIndex(g, art.frames.length) ? ' on' : ''}`)).join('')}</div>` : banner}${timingConsole(g)}`;
   if (sp.type === 'tap') {
     const slots = Array.from({ length: sp.patches }, (_, i) => i), inner = i => art.patch ? artImg(art.patch, 'patchimg') : '';
     const head = `<div class="row small"><span id="tapTime"><b>${g.left.toFixed(1)}</b> seconds left</span><span class="muted right">${g.tapped.length} of ${sp.patches} cleared</span></div><div class="bar" style="margin:6px 0"><i id="tapBar" style="width:${Math.max(0, g.left / sp.seconds * 100)}%"></i></div>`;
@@ -108,12 +120,21 @@ MODALS.crisisGame = () => {
     ${who ? `<div class="row small" style="margin-bottom:6px">${avatar(who, 'sm')}<b>${esc(who.name)}</b><span class="stars">${stars(who.skill)}</span>${sp.helped ? `<span class="chip good">${esc(who.trait)}: ${TRAIT_HELP[sp.type]}</span>` : ''}</div>` : ''}
     <p style="margin:0 0 4px"><b>${esc(prompt)}</b></p><p class="muted small" style="margin:0 0 10px">${GAME_HELP[sp.type]}</p>
     ${gameBody(g)}
-    ${g.picked !== null ? '' : `<div class="actions" style="margin-top:14px"><button class="btn ghost" data-act="crisisCancel">Not now</button><button class="btn ghost" data-act="crisisSkip">Leave it to chance (${pct(g.odds)})</button></div>`}` };   // once an answer is picked there is only Continue, so a bad result cannot be swapped for the dice
+    ${g.picked !== null || g.stopping ? '' : `<div class="actions" style="margin-top:14px"><button class="btn ghost" data-act="crisisCancel">Not now</button><button class="btn ghost" data-act="crisisSkip">Leave it to chance (${pct(g.odds)})</button></div>`}` };   // once an answer is picked there is only Continue, so a bad result cannot be swapped for the dice
 };
 
 /* ---------- Playing ---------- */
 const tapRate = g => g.taps / Math.max(0.5, g.spec.seconds - g.left);   // taps a second over the time the player actually took
-actions.tgStop = () => { const g = ui.game; if (g && g.spec.type === 'timing') finishCrisisGame(crisisJudge(g.spec, g.pos), { value: Math.abs(g.pos - g.spec.center) * g.spec.sweepMs }); };
+actions.tgStop = () => {
+  const g = ui.game;
+  if (!g || g.spec.type !== 'timing' || g.stopping) return;
+  const result = crisisJudge(g.spec, g.pos), extra = { value: Math.abs(g.pos - g.spec.center) * g.spec.sweepMs };
+  g.stopping = true; g.frozen = true; g.fb = result.perfect ? 'perfect' : result.success ? 'hit' : 'miss';
+  sfx(g.fb === 'perfect' ? 'award' : g.fb === 'hit' ? 'good' : 'bad');
+  if (navigator.vibrate) { try { navigator.vibrate(g.fb === 'perfect' ? [30, 50, 30] : g.fb === 'hit' ? 25 : 70); } catch (e) { /* not allowed here */ } }   // where the device allows it
+  render();   // the console now shows the outcome, with no Not now or Leave it to chance, so a miss cannot be swapped for the dice
+  setTimeout(() => finishCrisisGame(result, extra, g), 850);   // the result still counts if the dialog is closed meanwhile
+};
 actions.tapPatch = d => {
   const g = ui.game, i = Number(d.i);
   if (!g || g.spec.type !== 'tap' || g.tapped.includes(i)) return;
@@ -147,7 +168,16 @@ function gameLoops() {
       if (!cur || cur !== g || !ui.modal || ui.modal.type !== 'crisisGame') { gameFrame = null; return; }
       if (!cur.frozen) { const x = ((now - t0) / (cur.spec.sweepMs * slow)) % 2; cur.pos = x <= 1 ? x : 2 - x; }
       const el = document.getElementById('tgMark');
-      if (el) el.style.left = (cur.pos * 100).toFixed(2) + '%';
+      if (el) {
+        el.style.left = (cur.pos * 100).toFixed(2) + '%';
+        const tr = document.getElementById('tgTrail'), lit = Math.abs(cur.pos - cur.spec.center) <= cur.spec.zone / 2;
+        if (!cur.stopping) {
+          const dir = cur.pos > (cur.lastPos === undefined ? cur.pos : cur.lastPos) ? 1 : cur.pos < cur.lastPos ? -1 : (cur.dir || 1); cur.dir = dir; cur.lastPos = cur.pos;
+          if (tr) { tr.style.left = (dir > 0 ? Math.max(-2, cur.pos * 100 - 20) : cur.pos * 100) + '%'; tr.style.width = '20%'; tr.classList.toggle('rev', dir < 0); }
+          el.classList.toggle('hot', lit); const zn = document.getElementById('tgZone'), sb = document.querySelector('.tg-stop');
+          if (zn) zn.classList.toggle('lit', lit); if (sb) sb.classList.toggle('hot', lit);
+        }
+      }
       const fr = document.querySelectorAll('.gframe');   // the picture follows the marker
       if (fr.length) { const idx = frameIndex(cur, fr.length); fr.forEach((f, i) => f.classList.toggle('on', i === idx)); }
       gameFrame = requestAnimationFrame(step);

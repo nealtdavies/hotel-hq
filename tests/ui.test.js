@@ -1036,11 +1036,21 @@ const assert = (c, m) => { if (!c) { failed++; console.error('FAIL:', m); } else
     await closeToasts();
     // a timing game: the valve
     await page.click('.crisis-card .pick[data-key="valve"] >> nth=0'); await page.waitForTimeout(250);
-    assert(await page.locator('.modal .tg-bar .tg-zone').count() === 1 && await page.locator('.modal [data-act="tgStop"]').count() === 1, 'a timing game shows a green zone and a Stop button');
+    assert(await page.locator('.modal .tg-console .tg-rail .tg-zone').count() === 1 && await page.locator('.modal .tg-orb').count() === 1 && await page.locator('.modal [data-act="tgStop"]').count() === 1, 'a timing game shows a console with a green zone, a glowing orb and a STOP button');
     const markMoves = await page.evaluate(async () => { const a = document.getElementById('tgMark').style.left; await new Promise(r => setTimeout(r, 300)); return a !== document.getElementById('tgMark').style.left; });
     assert(markMoves, 'the marker moves');
-    await page.evaluate(() => { ui.game.frozen = true; ui.game.pos = ui.game.spec.center; });
-    await page.click('.modal [data-act="tgStop"]'); await page.waitForTimeout(200);
+    // the zone and the button light up while the orb is inside the zone, and not outside it
+    await page.evaluate(() => { ui.game.frozen = true; ui.game.pos = ui.game.spec.center; }); await page.waitForTimeout(120);
+    const litIn = await page.evaluate(() => document.getElementById('tgZone').classList.contains('lit') && document.querySelector('.tg-stop').classList.contains('hot') && document.getElementById('tgMark').classList.contains('hot'));
+    await page.evaluate(() => { ui.game.pos = Math.max(0, ui.game.spec.center - ui.game.spec.zone); }); await page.waitForTimeout(120);
+    const litOut = await page.evaluate(() => !document.getElementById('tgZone').classList.contains('lit') && !document.querySelector('.tg-stop').classList.contains('hot') && !document.getElementById('tgMark').classList.contains('hot'));
+    assert(litIn && litOut, 'the zone, the orb and the button light up only while the orb is inside the zone');
+    await page.evaluate(() => { ui.game.pos = ui.game.spec.center; });
+    await page.click('.modal [data-act="tgStop"]'); await page.waitForTimeout(120);
+    // after STOP: the outcome is shown, there is no way to leave or swap for the dice, and a second press does nothing
+    const shown = await page.evaluate(() => ({ perfect: !!document.querySelector('.tg-console.fb-perfect') && !!document.querySelector('.tg-burst.perfect') && /Perfect/.test(document.querySelector('.tg-result').innerText), stopDisabled: document.querySelector('.tg-stop').disabled, noLeave: !document.querySelector('.modal [data-act="crisisSkip"]') && !document.querySelector('.modal [data-act="crisisCancel"]'), still: ui.game !== null && S.crises[0].acted.valve === undefined }));
+    assert(shown.perfect && shown.stopDisabled && shown.noLeave && shown.still, 'after STOP the outcome shows ("Perfect!" with a ring), the button is locked and there is no Not now or Leave it to chance');
+    await page.evaluate(() => { actions.tgStop(); actions.crisisCancel(); actions.crisisSkip(); }); await page.waitForTimeout(1000);
     assert(await page.evaluate(() => S.crises[0].fix === 44 + 25 && S.crises[0].trouble === 0 && ui.game === null && S.crises[0].credit && Object.values(S.crises[0].credit).includes(3)), 'stopping in the middle of the zone is a perfect hit');
     await closeToasts();
     // a tapping game: drying the rooms (the zone and the timer are separate games)
@@ -1137,7 +1147,7 @@ const assert = (c, m) => { if (!c) { failed++; console.error('FAIL:', m); } else
     await page.waitForTimeout(150);
     const mid = await page.evaluate(() => [...document.querySelectorAll('.gframe')].findIndex(f => f.classList.contains('on')));
     assert(first === 0 && last === 4 && mid === 2, 'the picture follows the marker, from the first to the last, with the middle one in the middle');
-    await page.click('.modal [data-act="tgStop"]'); await page.waitForTimeout(250);
+    await page.click('.modal [data-act="tgStop"]'); await page.waitForTimeout(1000);
     assert(await page.evaluate(() => ui.game === null && S.crises[0].acted.valve === S.day), 'and the game still finishes as usual');
     await page.evaluate(() => { S.staff.forEach(x => { x.used = 0; }); render(); });
     await page.click('.crisis-card .pick[data-key="dry"] >> nth=0'); await page.waitForTimeout(400);
@@ -1181,6 +1191,16 @@ const assert = (c, m) => { if (!c) { failed++; console.error('FAIL:', m); } else
     assert(await page.evaluate(([t2]) => ui.game === null && S.crises[0].trouble > t2 && S.gameStats.maths.plays >= 3, [t2]), 'running out of time counts as a wrong answer');
     assert(await page.evaluate(() => S.gameStats.maths.plays === 3 && S.gameStats.maths.wins === 1 && S.gameStats.maths.n === 3), 'the maths games are counted');
     await page.evaluate(() => { S.crises = []; S.crisisLast = -99; S.warning = null; S.rooms.forEach(r => { r.damaged = false; }); S.staff.forEach(x => { x.used = 0; }); startCrisis('pipe', false); S.crises[0].seen = true; actions.nav({ view: 'crisis' }); });   // back to the burst pipe for the checks that follow
+    // a miss, and trying to dodge it by closing the dialog: the result still counts
+    await page.evaluate(() => { S.crises[0].acted = {}; S.staff.forEach(x => { x.used = 0; }); render(); });
+    const troubleBefore = await page.evaluate(() => S.crises[0].trouble);
+    await page.click('.crisis-card .pick[data-key="valve"] >> nth=0'); await page.waitForTimeout(400);
+    await page.evaluate(() => { ui.game.frozen = true; ui.game.pos = Math.max(0, ui.game.spec.center - ui.game.spec.zone * 2); });
+    await page.click('.modal [data-act="tgStop"]'); await page.waitForTimeout(120);
+    assert(await page.evaluate(() => !!document.querySelector('.tg-console.fb-miss') && document.querySelector('.tg-orb').classList.contains('bad') && /Missed/.test(document.querySelector('.tg-result').innerText) && !document.querySelector('.tg-burst')), 'a miss turns the orb red, shakes the console and says so');
+    await page.evaluate(() => { closeModal(); }); await page.waitForTimeout(1000);
+    assert(await page.evaluate(([t]) => S.crises[0].acted.valve === S.day && S.crises[0].trouble === t + CRISES.pipe.actions.find(a => a.key === 'valve').risk, [troubleBefore]), 'closing the dialog after pressing STOP does not undo a miss');
+    await page.evaluate(() => { ui.modal = null; ui.game = null; S.crises[0].acted = {}; S.staff.forEach(x => { x.used = 0; }); render(); });
     // ---- picture effects (js/ui-fx.js): a transparent layer over the pictures ----
     const freshAction = async key => { await page.evaluate(() => { S.crises[0].acted = {}; S.staff.forEach(x => { x.used = 0; }); render(); }); await page.click(`.crisis-card .pick[data-key="${key}"] >> nth=0`); await page.waitForTimeout(500); await page.evaluate(() => { ui.game.frozen = true; }); };
     const inked = () => page.evaluate(() => { const cv = document.querySelector('.modal canvas.fx'); if (!cv) return -1; const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data; let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i] > 8) n++; return n; });
