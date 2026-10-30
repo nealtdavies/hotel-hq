@@ -6,7 +6,7 @@
    The block between the BUILD markers is written by `node tools/make-sw.js`. Run it after changing any game file, so the version changes
    and old copies are replaced. `node tools/make-sw.js --check` says whether it is up to date. */
 /* BUILD:START */
-const VERSION = 'bcc5d8902907';
+const VERSION = 'c91f6ba54cf9';
 const PRECACHE = [
   "./",
   "index.html",
@@ -83,7 +83,8 @@ const PRECACHE = [
 const SHELL = `hotelhq-shell-${VERSION}`, PICTURES = 'hotelhq-pictures';
 
 self.addEventListener('install', event => {
-  event.waitUntil(caches.open(SHELL).then(cache => cache.addAll(PRECACHE)).then(() => self.skipWaiting()));
+  // `reload` goes to the network, never to the browser's own ten-minute copy, so a new version is built from new files
+  event.waitUntil(caches.open(SHELL).then(cache => cache.addAll(PRECACHE.map(url => new Request(url, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 
 /* Remove the game files of older versions, keep the pictures (they do not change with the code). */
@@ -98,7 +99,7 @@ self.addEventListener('fetch', event => {
   if (req.method !== 'GET' || url.origin !== self.location.origin) return;
   // Opening the game: use the network when there is one (so updates arrive), the stored page when there is not.
   if (req.mode === 'navigate') {
-    event.respondWith(fetch(req).catch(() => caches.match('index.html', { cacheName: SHELL })));
+    event.respondWith(fetch(req, { cache: 'no-cache' }).catch(() => caches.match('index.html', { cacheName: SHELL })));   // `no-cache` asks the server whether the page changed (a small check), so the newest page is used
     return;
   }
   // Pictures: use a stored copy, otherwise fetch and keep one.

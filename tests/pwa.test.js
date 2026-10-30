@@ -43,6 +43,13 @@ const pngSize = f => { const b = fs.readFileSync(path.join(root, f)); return b.t
   assert(JSON.stringify(pngSize('icons/apple-touch-icon.png')) === '[180,180]' && JSON.stringify(pngSize('icons/favicon-32.png')) === '[32,32]', 'the Apple touch icon is 180 by 180 and the favicon 32 by 32');
   let swOk = true; try { execFileSync('node', [path.join(root, 'tools', 'make-sw.js'), '--check'], { stdio: 'pipe' }); } catch (e) { swOk = false; }
   assert(swOk, 'sw.js and pictures.json are up to date with the game files (run node tools/make-sw.js if not)');
+  const swSource = fs.readFileSync(path.join(root, 'sw.js'), 'utf8');
+  assert(/new Request\(url, \{ cache: 'reload' \}\)/.test(swSource) && /fetch\(req, \{ cache: 'no-cache' \}\)/.test(swSource), 'an update is built from new files and the opening page is checked against the server, never answered from the browser\'s ten-minute copy');
+  const v1 = execFileSync('node', [path.join(root, 'tools', 'make-sw.js'), '--check'], { stdio: 'pipe' }).toString().match(/version (\w+)/)[1];
+  fs.writeFileSync(path.join(root, 'sw.js'), swSource.replace("self.addEventListener('install'", "/* test */ self.addEventListener('install'"));
+  let v2 = ''; try { execFileSync('node', [path.join(root, 'tools', 'make-sw.js'), '--check'], { stdio: 'pipe' }); } catch (e) { v2 = 'stale'; }
+  fs.writeFileSync(path.join(root, 'sw.js'), swSource);
+  assert(v1 && v2 === 'stale' && execFileSync('node', [path.join(root, 'tools', 'make-sw.js'), '--check'], { stdio: 'pipe' }).toString().includes(v1), 'changing the offline worker\'s own rules counts as a new version');
   const swText = fs.readFileSync(path.join(root, 'sw.js'), 'utf8');
   const precache = JSON.parse(swText.match(/const PRECACHE = (\[[\s\S]*?\]);/)[1]);
   assert(precache.every(f => f === './' || fs.existsSync(path.join(root, f))) && precache.includes('index.html') && precache.includes('css/style.css') && precache.includes('js/main.js') && fs.readdirSync(path.join(root, 'js')).every(f => precache.includes('js/' + f)), 'the service worker stores every script, the page, the styles and every file it lists exists');

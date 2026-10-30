@@ -15,13 +15,15 @@ const bytes = pictures.reduce((a, f) => a + fs.statSync(path.join(root, f)).size
 const picturesJson = JSON.stringify({ count: pictures.length, bytes, files: pictures }, null, 1) + '\n';
 
 const shell = ['index.html', 'manifest.webmanifest', 'pictures.json', 'css/style.css', ...list('js'), ...list('icons')];
+const sw = fs.readFileSync(path.join(root, 'sw.js'), 'utf8');
+const BUILD = /\/\* BUILD:START \*\/[\s\S]*?\/\* BUILD:END \*\//;
 const hash = crypto.createHash('sha256');
 shell.forEach(f => { hash.update(f); hash.update(f === 'pictures.json' ? picturesJson : read(f)); });
+hash.update(sw.replace(BUILD, ''));   // a change to the worker's own rules is a new version too
 const version = hash.digest('hex').slice(0, 12);
 
 const block = `/* BUILD:START */\nconst VERSION = '${version}';\nconst PRECACHE = ${JSON.stringify(['./', ...shell], null, 2)};\n/* BUILD:END */`;
-const sw = fs.readFileSync(path.join(root, 'sw.js'), 'utf8');
-const next = sw.replace(/\/\* BUILD:START \*\/[\s\S]*?\/\* BUILD:END \*\//, block);
+const next = sw.replace(BUILD, block);
 const current = fs.existsSync(path.join(root, 'pictures.json')) ? fs.readFileSync(path.join(root, 'pictures.json'), 'utf8') : '';
 
 if (process.argv.includes('--check')) {
