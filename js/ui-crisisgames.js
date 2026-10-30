@@ -23,6 +23,7 @@ async function probeArt(key) {
 }
 /* A patch fades with every tap, from solid to almost clear on the last one. */
 const patchFade = (g, i) => (1 - ((g.hits && g.hits[i]) || 0) / g.spec.taps * 0.9).toFixed(2);
+const fxAttr = art => art && art.key ? ` data-fx="${esc(art.key)}"` : '';   // asks ui-fx.js for this picture's light effects
 const artImg = (src, cls) => `<img class="${cls}" src="${esc(src)}" alt="" draggable="false">`;
 const reducedMotion = () => !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 
@@ -65,13 +66,13 @@ actions.crisisCancel = () => { ui.game = null; closeModal(); };
 const frameIndex = (g, n) => Math.round(g.pos * (n - 1));
 function gameBody(g) {
   const sp = g.spec, art = g.art || { bg: null, patch: null, frames: [] };
-  const banner = art.bg ? `<div class="gstage banner">${artImg(art.bg, 'gbg')}</div>` : '';
-  if (sp.type === 'timing') return `${art.frames.length ? `<div class="gstage">${art.bg ? artImg(art.bg, 'gbg') : ''}${art.frames.map((src, i) => artImg(src, `gframe${i === frameIndex(g, art.frames.length) ? ' on' : ''}`)).join('')}</div>` : banner}<div class="tg-bar" aria-hidden="true"><div class="tg-zone" style="left:${((sp.center - sp.zone / 2) * 100).toFixed(2)}%;width:${(sp.zone * 100).toFixed(2)}%"></div><div class="tg-mark" id="tgMark" style="left:${(g.pos * 100).toFixed(2)}%"></div></div>
+  const banner = art.bg ? `<div class="gstage banner"${fxAttr(art)}>${artImg(art.bg, 'gbg')}</div>` : '';
+  if (sp.type === 'timing') return `${art.frames.length ? `<div class="gstage"${fxAttr(art)}>${art.bg ? artImg(art.bg, 'gbg') : ''}${art.frames.map((src, i) => artImg(src, `gframe${i === frameIndex(g, art.frames.length) ? ' on' : ''}`)).join('')}</div>` : banner}<div class="tg-bar" aria-hidden="true"><div class="tg-zone" style="left:${((sp.center - sp.zone / 2) * 100).toFixed(2)}%;width:${(sp.zone * 100).toFixed(2)}%"></div><div class="tg-mark" id="tgMark" style="left:${(g.pos * 100).toFixed(2)}%"></div></div>
     <div class="actions" style="justify-content:center"><button class="btn primary big" data-act="tgStop" data-autofocus>Stop!</button></div>`;
   if (sp.type === 'tap') {
     const slots = Array.from({ length: sp.patches }, (_, i) => i), inner = i => art.patch ? artImg(art.patch, 'patchimg') : '';
     const head = `<div class="row small"><span id="tapTime"><b>${g.left.toFixed(1)}</b> seconds left</span><span class="muted right">${g.tapped.length} of ${sp.patches} cleared</span></div><div class="bar" style="margin:6px 0"><i id="tapBar" style="width:${Math.max(0, g.left / sp.seconds * 100)}%"></i></div>`;
-    if (art.bg) return `${head}<div class="gstage tapstage">${artImg(art.bg, 'gbg')}${slots.map(i => g.tapped.includes(i) ? '' : `<button class="patch ${art.patch ? 'art' : ''}" data-act="tapPatch" data-i="${i}" aria-label="Patch ${i + 1}" style="opacity:${patchFade(g, i)};left:${PATCH_SLOTS[i % PATCH_SLOTS.length][0]}%;top:${PATCH_SLOTS[i % PATCH_SLOTS.length][1]}%">${inner(i)}</button>`).join('')}</div>`;
+    if (art.bg) return `${head}<div class="gstage tapstage"${fxAttr(art)}>${artImg(art.bg, 'gbg')}${slots.map(i => g.tapped.includes(i) ? '' : `<button class="patch ${art.patch ? 'art' : ''}" data-act="tapPatch" data-i="${i}" aria-label="Patch ${i + 1}" style="opacity:${patchFade(g, i)};left:${PATCH_SLOTS[i % PATCH_SLOTS.length][0]}%;top:${PATCH_SLOTS[i % PATCH_SLOTS.length][1]}%">${inner(i)}</button>`).join('')}</div>`;
     return `${head}<div class="patches">${slots.map(i => g.tapped.includes(i) ? '<span class="patch gone"></span>' : `<button class="patch ${art.patch ? 'art' : ''}" data-act="tapPatch" data-i="${i}" aria-label="Patch ${i + 1}" style="opacity:${patchFade(g, i)};--j:${(i * 37) % 13}">${inner(i)}</button>`).join('')}</div>`;
   }
   if (sp.type === 'choice') {
@@ -117,6 +118,7 @@ actions.tapPatch = d => {
   const g = ui.game, i = Number(d.i);
   if (!g || g.spec.type !== 'tap' || g.tapped.includes(i)) return;
   g.hits[i] = (g.hits[i] || 0) + 1; g.taps++;
+  if (g.art && g.art.bg) { const slot = PATCH_SLOTS[i % PATCH_SLOTS.length]; fxBurst(g.art.key, (GAME_ART[g.art.key] || {}).patch === 'crumb' ? 'dust' : 'ripple', slot[0] / 100, slot[1] / 100, g.hits[i] >= g.spec.taps); }   // water ripples, or dust for crumbs
   const el = document.querySelector(`.modal .patch[data-i="${i}"]`);   // only this patch is redrawn, so rapid tapping stays smooth
   if (g.hits[i] < g.spec.taps) { if (el) el.style.opacity = patchFade(g, i); return; }
   g.tapped.push(i);

@@ -325,6 +325,9 @@ function viewSettings() {
     <div class="card" style="margin-top:18px"><h3>Sound</h3>
       <p class="muted small">Short sound effects for money, messages, awards and level-ups. This is a setting for this device.</p>
       <label class="row" style="gap:10px"><input type="checkbox" data-act="toggleSound" ${sound.on ? 'checked' : ''}> <b>Sound effects</b></label></div>
+    <div class="card" style="margin-top:18px"><h3>Picture effects</h3>
+      <p class="muted small">Gentle moving touches over the game pictures: drips, rain, flickering candles, sparkles and ripples. Nothing flashes. This is a setting for this device, and the effects stay off if your device is set to reduce motion.</p>
+      <label class="row" style="gap:10px"><input type="checkbox" data-act="toggleFx" ${fx.on ? 'checked' : ''}> <b>Picture effects</b>${reducedMotion() ? ' <span class="muted small">(off: your device asks for reduced motion)</span>' : ''}</label></div>
     <div class="card" style="margin-top:18px"><h3>Play offline</h3>${offlineCard()}</div>
     <div class="card" style="margin-top:18px"><h3>Save and backup</h3>
       <p class="muted small">Your hotel saves automatically in this browser on this device. Export a file to back it up or move it to another device.</p>

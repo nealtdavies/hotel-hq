@@ -1181,6 +1181,42 @@ const assert = (c, m) => { if (!c) { failed++; console.error('FAIL:', m); } else
     assert(await page.evaluate(([t2]) => ui.game === null && S.crises[0].trouble > t2 && S.gameStats.maths.plays >= 3, [t2]), 'running out of time counts as a wrong answer');
     assert(await page.evaluate(() => S.gameStats.maths.plays === 3 && S.gameStats.maths.wins === 1 && S.gameStats.maths.n === 3), 'the maths games are counted');
     await page.evaluate(() => { S.crises = []; S.crisisLast = -99; S.warning = null; S.rooms.forEach(r => { r.damaged = false; }); S.staff.forEach(x => { x.used = 0; }); startCrisis('pipe', false); S.crises[0].seen = true; actions.nav({ view: 'crisis' }); });   // back to the burst pipe for the checks that follow
+    // ---- picture effects (js/ui-fx.js): a transparent layer over the pictures ----
+    const freshAction = async key => { await page.evaluate(() => { S.crises[0].acted = {}; S.staff.forEach(x => { x.used = 0; }); render(); }); await page.click(`.crisis-card .pick[data-key="${key}"] >> nth=0`); await page.waitForTimeout(500); await page.evaluate(() => { ui.game.frozen = true; }); };
+    const inked = () => page.evaluate(() => { const cv = document.querySelector('.modal canvas.fx'); if (!cv) return -1; const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data; let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i] > 8) n++; return n; });
+    await freshAction('valve');
+    assert(await page.locator('.modal .gstage[data-fx="pipe-valve"] > canvas.fx').count() === 1 && await page.evaluate(() => { const cv = document.querySelector('.modal canvas.fx'); return getComputedStyle(cv).pointerEvents === 'none' && cv.getAttribute('aria-hidden') === 'true' && cv.getBoundingClientRect().width > 100 && cv.getBoundingClientRect().height > 60; }), 'a picture gets an effects layer that never takes a tap and is hidden from screen readers');
+    let drew = 0; for (let i = 0; i < 40 && drew <= 0; i++) { await page.waitForTimeout(100); drew = await inked(); }
+    assert(drew > 0, 'the leak drips (something is drawn on the layer)');
+    assert(await page.evaluate(() => { const a = fxMap(520, 150, 1.5), b = fxMap(300, 200, 1.5), c = fxMap(640, 360, 16 / 9); const m = a.at(0.5, 0.5), e = b.at(1, 1), f = c.at(0, 0); return Math.abs(m[0] - 260) < 0.01 && Math.abs(m[1] - 75) < 0.01 && Math.abs(e[0] - 300) < 0.01 && Math.abs(e[1] - 200) < 0.01 && Math.abs(f[0]) < 0.01 && Math.abs(f[1]) < 0.01; }), 'effects are placed on the picture the same way the page crops it (a strip, a whole picture, a wide picture)');
+    // the switch in Settings, and the device's own request for less motion
+    await page.evaluate(() => { actions.toggleFx(); });
+    assert(await page.locator('.modal canvas.fx').count() === 0 && await page.evaluate(() => fx.running === false && fx.targets.size === 0 && storage.get(FX_KEY) === 'off'), 'turning picture effects off removes them, stops the loop and is remembered');
+    await page.evaluate(() => { actions.toggleFx(); }); await page.waitForTimeout(150);
+    assert(await page.locator('.modal canvas.fx').count() === 1 && await page.evaluate(() => fx.running === true && storage.get(FX_KEY) === 'on'), 'turning them on again brings them back');
+    await page.emulateMedia({ reducedMotion: 'reduce' }); await page.evaluate(() => { render(); }); await page.waitForTimeout(150);
+    assert(await page.locator('.modal canvas.fx').count() === 0 && await page.evaluate(() => fx.running === false), 'a device that asks for reduced motion gets no effects');
+    await page.emulateMedia({ reducedMotion: 'no-preference' }); await page.evaluate(() => { render(); }); await page.waitForTimeout(150);
+    assert(await page.locator('.modal canvas.fx').count() === 1, 'and they return when it does not');
+    // closing the game stops the loop by itself
+    await page.click('.modal [data-act="crisisCancel"]'); await page.waitForTimeout(250);
+    assert(await page.evaluate(() => fx.running === true && fx.targets.size === 1 && [...fx.targets.keys()].every(el => el.isConnected && !el.closest('.modal'))), 'when the game closes only the crisis picture behind it is still animated');
+    // taps make ripples
+    await freshAction('dry');
+    assert(await page.locator('.modal .gstage.tapstage[data-fx="pipe-dry"] > canvas.fx').count() === 1 && await inked() === 0, 'a tapping scene starts with a clear layer');
+    await page.click('.modal .patch[data-i="0"]'); await page.waitForTimeout(90);
+    assert(await inked() > 0, 'tapping a patch makes a ripple where it was tapped');
+    await page.click('.modal [data-act="crisisCancel"]'); await page.waitForTimeout(150);
+    // the wide crisis picture and the switch on the Settings page
+    assert(await page.locator('.crisis-card .fxwrap[data-fx="crisis-pipe"] > canvas.fx').count() === 1, 'the crisis picture has drips too');
+    await page.evaluate(() => { actions.nav({ view: 'settings' }); }); await page.waitForTimeout(150);
+    assert((await page.locator('.content').innerText()).includes('Picture effects') && await page.locator('[data-act="toggleFx"]').isChecked(), 'Settings has a Picture effects switch, on');
+    await page.waitForTimeout(200);
+    assert(await page.evaluate(() => fx.running === false && fx.targets.size === 0 && !fx.frame), 'with no picture on screen at all nothing keeps running');
+    // cost: drawing the busiest picture (grill with embers and smoke) stays cheap
+    const cost = await page.evaluate(() => { const host = document.createElement('div'); host.className = 'gstage'; host.dataset.fx = 'power-barbecue'; host.style.cssText = 'position:fixed;left:0;top:0;width:520px;height:347px'; document.body.appendChild(host); fxScan(); let t = 0; const n = 200; for (let i = 0; i < n; i++) { const a = performance.now(); fxLoop(a + 16 * i + 1000); if (fx.frame) cancelAnimationFrame(fx.frame); t += performance.now() - a; } host.remove(); fx.targets.clear(); fxStop(); return t / n; });
+    assert(cost < 6, `the busiest picture costs about ${cost.toFixed(2)} ms a frame to draw (limit 6)`);
+    await page.evaluate(() => { actions.nav({ view: 'crisis' }); S.crises[0].acted = {}; S.staff.forEach(x => { x.used = 0; }); render(); });
     await page.click('.crisis-card [data-act="crisisPlay"][data-key="plumber"]'); await page.waitForTimeout(400);
     assert(await page.locator('.modal .gstage.banner .gbg').count() === 1, 'a word game shows its picture as a banner');
     await page.click('.modal [data-act="crisisCancel"]'); await page.waitForTimeout(150);

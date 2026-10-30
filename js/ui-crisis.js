@@ -21,7 +21,7 @@ const crisisEffects = c => {
   return out;
 };
 /* A picture for a crisis, if there is one. Crisis pictures are optional: with none, nothing shows. */
-const crisisPicture = key => { const src = `assets/scenes/crisis-${key}.jpg`; return missingImgs.has(src) ? '' : imgHtml(src, { fb: 'none', alt: CRISES[key].name }); };
+const crisisPicture = key => { const src = `assets/scenes/crisis-${key}.jpg`; return missingImgs.has(src) ? '' : `<div class="fxwrap" data-fx="crisis-${key}">${imgHtml(src, { fb: 'none', alt: CRISES[key].name })}</div>`; };
 const warnDays = w => w.due - S.day <= 0 ? 'today' : w.due - S.day === 1 ? 'tomorrow' : 'the day after tomorrow';
 
 /* ---------- On the Dashboard ---------- */
